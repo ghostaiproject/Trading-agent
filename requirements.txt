@@ -1,0 +1,4 @@
+anthropic>=0.75.0
+ib_async>=1.0.3
+pydantic>=2.7
+python-dotenv>=1.0
