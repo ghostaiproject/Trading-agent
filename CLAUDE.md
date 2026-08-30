@@ -35,20 +35,23 @@ instance, so verify changes to `broker.py` manually against a paper account.
 
 ## Architecture
 
-Five modules, wired together by `trading_agent/main.py::run_cycle`, run once
+Six modules, wired together by `trading_agent/main.py::run_cycle`, run once
 per cycle in this order:
 
 1. **`broker.py` (`IBKRBroker`)** — owns the `ib_async` connection to
    TWS/IB Gateway. Pulls `AccountState`, `Position`s, and `MarketSnapshot`s
    (last/bid/ask + 30 days of daily closes) for the configured watchlist, and
-   submits orders. `place_order` is a no-op (returns `None`, contacts nothing)
-   whenever `settings.dry_run` is true — this is the mechanism, not just
-   documentation, that keeps dry-run safe.
+   submits orders. Each `MarketSnapshot` now includes computed technical
+   indicators (RSI, 20-day/50-day moving averages). `place_order` is a no-op
+   (returns `None`, contacts nothing) whenever `settings.dry_run` is true — this
+   is the mechanism, not just documentation, that keeps dry-run safe.
 2. **`llm_advisor.py` (`LLMAdvisor`)** — builds one text prompt from the
-   account/positions/snapshots and calls `client.messages.parse(...,
-   output_format=TradeDecision)` against `claude-opus-5`, guaranteeing a
-   structured `TradeDecision` (one `TradeProposal` per watchlist symbol, incl.
-   holds) back — no manual JSON parsing.
+   account/positions/snapshots/technical indicators/historical performance and
+   calls `client.messages.parse(..., output_format=TradeDecision)` against
+   `claude-opus-5`, guaranteeing a structured `TradeDecision` (one
+   `TradeProposal` per watchlist symbol, incl. holds) back — no manual JSON
+   parsing. Optionally fetches real-time market intelligence (news, earnings,
+   analyst ratings) via web search for each symbol to enrich the context.
 3. **`risk.py` (`RiskManager`)** — the real gatekeeper. Every non-hold
    proposal is checked against hard limits (max order value, max position
    value, cash on hand, held quantity for sells, total exposure %, daily
@@ -63,12 +66,20 @@ per cycle in this order:
    `logs/decisions-<UTC date>.jsonl`. This is the audit trail if something
    goes wrong; new event types should go through `TradeLog.record`, not a
    separate logging path.
+6. **`trade_journal.py` (`TradeJournal`)** — tracks trade predictions vs
+   actual outcomes in `logs/trade-journal.jsonl`, enabling the agent to learn
+   from its own historical performance. The journal is queried at the start
+   of each cycle to provide Claude with recent P&L results and win rates,
+   shaping future decisions. Each prediction records entry price and confidence;
+   outcomes are recorded as they close with P&L and performance metrics.
 
 `config.py` (`Settings.from_env`) is the single source of truth for all
 tunables (loaded via `python-dotenv` from `.env`); nothing else should read
 `os.environ` directly. `WatchlistEntry` parsing (`SYMBOL:CURRENCY:EXCHANGE:
 PRIMARY_EXCHANGE`, defaulting to a TSX-listed CAD stock) lives there too.
 
-The LLM only ever sees price data and account/position state passed to it in
-the prompt — no news, fundamentals, or other context unless someone extends
-`llm_advisor.py`'s prompt-building to include it.
+Claude now sees price data, account/position state, technical indicators
+(RSI, moving averages), historical trading performance, and optionally
+real-time market intelligence (news, analyst ratings) — all passed in a
+single prompt that encourages cautious, data-driven decisions informed by
+recent outcomes.

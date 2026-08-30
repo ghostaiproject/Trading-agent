@@ -13,9 +13,14 @@ trading account first.
 
 1. **Broker (`trading_agent/broker.py`)** — connects to TWS or IB Gateway via
    `ib_async`, pulls account state, current positions, and recent price data
-   for your watchlist, and (when not in dry-run) submits orders.
-2. **LLM advisor (`trading_agent/llm_advisor.py`)** — sends that snapshot to
-   Claude (`claude-opus-5` by default) and gets back one structured trade
+   for your watchlist. Computes technical indicators (RSI, 20-day and 50-day
+   moving averages) from 30 days of historical closes to give Claude better
+   context. When not in dry-run, submits orders.
+2. **LLM advisor (`trading_agent/llm_advisor.py`)** — sends a rich snapshot to
+   Claude (`claude-opus-5` by default), including account state, positions,
+   price data, technical indicators, recent trading performance from the
+   journal, and optionally real-time market intelligence (news, earnings,
+   analyst ratings fetched via web search). Returns one structured trade
    proposal per watchlist symbol (`buy`/`sell`/`hold`, quantity, order type,
    confidence, rationale).
 3. **Risk manager (`trading_agent/risk.py`)** — independently checks every
@@ -29,6 +34,10 @@ trading account first.
 5. **Trade log (`trading_agent/trade_log.py`)** — appends every proposal, risk
    result, human decision, and order outcome to a daily JSONL file under
    `logs/`.
+6. **Trade journal (`trading_agent/trade_journal.py`)** — tracks all trade
+   predictions and their outcomes, computing win rates and P&L metrics that
+   feed back into Claude's next decision. This creates a closed loop where
+   Claude learns from its own historical performance.
 
 `trading_agent/main.py` wires these together into a cycle, optionally
 repeating on an interval with `--loop`.
@@ -66,6 +75,17 @@ the LLM advisor's request/response shape (mocked — no live API or broker
 calls). There's no automated coverage of the IBKR integration itself since it
 requires a running TWS/Gateway instance; verify that manually against a paper
 account.
+
+## Claude as an Investing Nerd
+
+The agent is designed to make Claude a sophisticated investing analyst, not just a price-following bot:
+
+- **Technical Analysis**: RSI (Relative Strength Index) and moving averages (20-day, 50-day) are computed for each symbol and passed to Claude. Claude uses these to identify overbought/oversold conditions and trend direction.
+- **Market Intelligence**: Optional web search integration fetches real-time news, earnings announcements, and analyst ratings for each watchlist symbol. Claude can reason over recent market sentiment and fundamental developments.
+- **Performance Learning**: The trade journal tracks every prediction vs. its outcome (entry price, exit price, P&L), and recent results are fed back into Claude's next decision. Claude learns from its own wins and losses, adjusting confidence and strategy over time.
+- **Adaptive Prompting**: The system prompt encourages Claude to consider all these data sources holistically—price action, technicals, news, and its own track record—before proposing trades.
+
+To enable web search, the `_fetch_market_intelligence` method in `llm_advisor.py` can be called for each symbol before building the prompt. This adds real-time context but may increase API latency.
 
 ## Configuration
 

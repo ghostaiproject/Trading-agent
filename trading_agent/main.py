@@ -4,6 +4,7 @@ import argparse
 import sys
 import time
 from datetime import datetime, timezone
+from typing import Any, Dict
 
 import anthropic
 
@@ -13,6 +14,7 @@ from .config import Settings
 from .llm_advisor import LLMAdvisor
 from .risk import RiskManager
 from .trade_log import TradeLog
+from .trade_journal import TradeJournal
 
 
 def run_cycle(
@@ -21,6 +23,7 @@ def run_cycle(
     risk_mgr: RiskManager,
     approver: ConsoleApprover,
     log: TradeLog,
+    journal: TradeJournal,
     settings: Settings,
 ) -> None:
     entries_by_symbol = {entry.symbol: entry for entry in settings.watchlist}
@@ -31,10 +34,17 @@ def run_cycle(
 
     log.record({"event": "cycle_start", "account": vars(account)})
 
-    decision = advisor.get_trade_decision(account, positions, snapshots)
+    historical_performance = {
+        "recent_outcomes": [journal.format_for_prompt()],
+    }
+
+    decision = advisor.get_trade_decision(account, positions, snapshots, historical_performance)
 
     for proposal in decision.proposals:
         log.record({"event": "proposal", "proposal": proposal.model_dump()})
+
+        if proposal.action != "hold":
+            journal.record_prediction(proposal, {prop.symbol: {"last_price": prop.last_price} for prop in snapshots.values()})
 
         if proposal.action == "hold":
             print(f"{proposal.symbol}: hold ({proposal.rationale})")
@@ -100,6 +110,7 @@ def main() -> None:
     risk_mgr = RiskManager(settings)
     approver = ConsoleApprover()
     log = TradeLog()
+    journal = TradeJournal()
 
     last_reset_day = datetime.now(timezone.utc).date()
 
@@ -111,7 +122,7 @@ def main() -> None:
                 last_reset_day = today
 
             try:
-                run_cycle(broker, advisor, risk_mgr, approver, log, settings)
+                run_cycle(broker, advisor, risk_mgr, approver, log, journal, settings)
             except Exception as exc:  # noqa: BLE001 - keep the loop alive across cycles
                 log.record({"event": "error", "message": str(exc)})
                 print(f"Error during cycle: {exc}", file=sys.stderr)

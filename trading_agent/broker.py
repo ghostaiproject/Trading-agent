@@ -31,6 +31,42 @@ class MarketSnapshot:
     bid: float
     ask: float
     recent_closes: List[float]
+    rsi: Optional[float] = None
+    sma_20: Optional[float] = None
+    sma_50: Optional[float] = None
+    market_intelligence: Optional[str] = None
+
+    @staticmethod
+    def compute_rsi(closes: List[float], period: int = 14) -> Optional[float]:
+        """Compute RSI (Relative Strength Index) from closing prices."""
+        if len(closes) < period:
+            return None
+        deltas = [closes[i] - closes[i - 1] for i in range(1, len(closes))]
+        seed = deltas[:period]
+        up = sum([x for x in seed if x > 0]) / period
+        down = sum([x for x in seed if x < 0]) / period
+        down = abs(down)
+
+        if down == 0:
+            return 100.0
+
+        rs = up / down
+        rsi = 100.0 - (100.0 / (1.0 + rs))
+
+        for delta in deltas[period:]:
+            up = (up * (period - 1) + (delta if delta > 0 else 0)) / period
+            down = (down * (period - 1) + (abs(delta) if delta < 0 else 0)) / period
+            rs = up / down if down != 0 else up / 0.0001
+            rsi = 100.0 - (100.0 / (1.0 + rs))
+
+        return rsi
+
+    @staticmethod
+    def compute_sma(closes: List[float], period: int) -> Optional[float]:
+        """Compute simple moving average for the last `period` closes."""
+        if len(closes) < period:
+            return None
+        return sum(closes[-period:]) / period
 
 
 class IBKRBroker:
@@ -111,7 +147,20 @@ class IBKRBroker:
         )
         recent_closes = [bar.close for bar in bars]
 
-        return MarketSnapshot(symbol=entry.symbol, last_price=last_price, bid=bid, ask=ask, recent_closes=recent_closes)
+        rsi = MarketSnapshot.compute_rsi(recent_closes)
+        sma_20 = MarketSnapshot.compute_sma(recent_closes, 20)
+        sma_50 = MarketSnapshot.compute_sma(recent_closes, 50)
+
+        return MarketSnapshot(
+            symbol=entry.symbol,
+            last_price=last_price,
+            bid=bid,
+            ask=ask,
+            recent_closes=recent_closes,
+            rsi=rsi,
+            sma_20=sma_20,
+            sma_50=sma_50,
+        )
 
     def place_order(
         self,
