@@ -66,6 +66,12 @@ class Settings:
     max_daily_trades: int
     max_total_exposure_pct: float
     dry_run: bool
+    # Orders at or under this value (in account base currency) skip the
+    # interactive y/N prompt and are approved automatically. 0 (default)
+    # disables auto-approval entirely, so every non-hold trade always
+    # prompts. This NEVER skips the risk manager - RiskManager.evaluate
+    # still runs, and still can reject the trade, before this is checked.
+    auto_approve_below: float
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -84,4 +90,6 @@ class Settings:
             max_total_exposure_pct=_get_float("MAX_TOTAL_EXPOSURE_PCT", 50.0),
             # Safe by default: no real order reaches the broker until DRY_RUN=false is set explicitly.
             dry_run=_get_bool("DRY_RUN", True),
+            # Safe by default: every non-hold trade prompts until you explicitly opt in.
+            auto_approve_below=_get_float("AUTO_APPROVE_BELOW", 0.0),
         )

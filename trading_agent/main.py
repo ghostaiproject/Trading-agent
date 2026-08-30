@@ -66,8 +66,17 @@ def run_cycle(
             print(f"{proposal.symbol}: rejected by risk manager - {risk_result.reason}")
             continue
 
-        if not approver.confirm(proposal, risk_result):
-            log.record({"event": "human_rejected", "symbol": proposal.symbol})
+        approved, approval_method = approver.confirm(proposal, risk_result, reference_price)
+        log.record(
+            {
+                "event": "approval_decision",
+                "symbol": proposal.symbol,
+                "approved": approved,
+                "method": approval_method,
+            }
+        )
+
+        if not approved:
             print(f"{proposal.symbol}: rejected by human")
             continue
 
@@ -81,10 +90,14 @@ def run_cycle(
                 "action": proposal.action,
                 "quantity": proposal.quantity,
                 "dry_run": settings.dry_run,
+                "approval_method": approval_method,
                 "trade": str(trade) if trade else None,
             }
         )
-        print(f"{proposal.symbol}: order submitted ({'DRY RUN' if settings.dry_run else 'LIVE'})")
+        print(
+            f"{proposal.symbol}: order submitted "
+            f"({'DRY RUN' if settings.dry_run else 'LIVE'}, {approval_method} approval)"
+        )
 
 
 def main() -> None:
@@ -102,13 +115,19 @@ def main() -> None:
     else:
         print("LIVE mode: approved trades WILL be submitted to your broker.")
 
+    if settings.auto_approve_below > 0:
+        print(
+            f"Auto-approve enabled: orders at or under "
+            f"${settings.auto_approve_below:,.2f} will skip the confirmation prompt."
+        )
+
     broker = IBKRBroker(settings)
     broker.connect()
 
     client = anthropic.Anthropic()
     advisor = LLMAdvisor(client, settings.llm_model)
     risk_mgr = RiskManager(settings)
-    approver = ConsoleApprover()
+    approver = ConsoleApprover(settings)
     log = TradeLog()
     journal = TradeJournal()
 
