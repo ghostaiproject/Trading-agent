@@ -41,7 +41,7 @@ def test_get_trade_decision_with_historical_performance():
 
     assert result == expected
     _, kwargs = client.messages.parse.call_args
-    assert "Historical performance" in kwargs["messages"][0]["content"]
+    assert "HISTORICAL PERFORMANCE" in kwargs["messages"][0]["content"]
 
 
 def test_build_prompt_includes_positions_and_snapshots():
@@ -50,10 +50,10 @@ def test_build_prompt_includes_positions_and_snapshots():
 
     prompt = LLMAdvisor._build_prompt(account, {}, snapshots)
 
-    assert "Net liquidation value: 10000.00" in prompt
+    assert "Net liquidation value: $10,000.00" in prompt
     assert "none" in prompt
     assert "SHOP" in prompt
-    assert "100.00" in prompt
+    assert "$100.00" in prompt
 
 
 def test_build_prompt_includes_technical_indicators():
@@ -85,5 +85,5 @@ def test_build_prompt_includes_historical_performance():
 
     prompt = LLMAdvisor._build_prompt(account, {}, snapshots, historical_performance)
 
-    assert "Historical performance" in prompt
-    assert "SHOP BUY" in prompt
+    assert "HISTORICAL PERFORMANCE" in prompt
+    assert "SHOP BUY: confidence 80%, P&L +$50" in prompt

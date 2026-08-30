@@ -78,14 +78,53 @@ account.
 
 ## Claude as an Investing Nerd
 
-The agent is designed to make Claude a sophisticated investing analyst, not just a price-following bot:
+The agent is engineered to make Claude a world-class trading analyst, not just a price-following bot:
 
-- **Technical Analysis**: RSI (Relative Strength Index) and moving averages (20-day, 50-day) are computed for each symbol and passed to Claude. Claude uses these to identify overbought/oversold conditions and trend direction.
-- **Market Intelligence**: Optional web search integration fetches real-time news, earnings announcements, and analyst ratings for each watchlist symbol. Claude can reason over recent market sentiment and fundamental developments.
-- **Performance Learning**: The trade journal tracks every prediction vs. its outcome (entry price, exit price, P&L), and recent results are fed back into Claude's next decision. Claude learns from its own wins and losses, adjusting confidence and strategy over time.
-- **Adaptive Prompting**: The system prompt encourages Claude to consider all these data sources holistically—price action, technicals, news, and its own track record—before proposing trades.
+### Advanced Technical Analysis
+- **Bollinger Bands**: Identify overbought/oversold conditions and volatility extremes
+- **MACD**: Momentum indicator for trend confirmation
+- **RSI**: Relative strength to spot reversals at extremes
+- **Moving Averages**: 20, 50, and 200-day MAs to identify trend direction
+- **Support/Resistance**: Key price levels automatically detected from recent price action
+- **Volatility**: 30-day volatility computed for risk assessment
 
-To enable web search, the `_fetch_market_intelligence` method in `llm_advisor.py` can be called for each symbol before building the prompt. This adds real-time context but may increase API latency.
+### Intelligent Investment Scoring
+Each symbol gets a composite investment score (-10 to +10) that integrates:
+- Technical signal strength (RSI, MAs, Bollinger Bands, MACD)
+- Momentum and trend direction
+- Risk/reward ratio (upside target vs downside risk)
+- Volatility considerations
+- Price position relative to support/resistance
+
+The score guides Claude toward high-conviction trades with favorable risk/reward ratios.
+
+### Position Sizing
+Position size is automatically adjusted based on volatility:
+- High volatility → smaller positions (protect capital)
+- Low volatility → larger positions (stable, compounding returns)
+- Always respects available cash and portfolio exposure limits
+
+### Learning Loop
+- **Trade Journal**: Every prediction is tracked with entry price, confidence level
+- **Outcome Recording**: Actual exit prices and P&L are recorded as trades close
+- **Win Rate Tracking**: Recent predictions vs outcomes feed back into Claude's next decision
+- **Continuous Improvement**: Claude learns what works and adjusts future strategy
+
+### Market Intelligence (Optional)
+Web search integration can fetch real-time:
+- News articles and earnings announcements
+- Analyst ratings and price targets
+- Sector rotation data
+- Macro context
+
+To enable, uncomment the `_fetch_market_intelligence` call in `llm_advisor.py`.
+
+### Decision Criteria
+Claude looks for confluence of signals:
+- Price oversold (RSI <30) + at support + bullish MACD = strong buy candidate
+- Multiple signals pointing same direction = higher confidence
+- High risk/reward (2:1+) required before proposing entry
+- Recent win rate considered when sizing positions
 
 ## Configuration
 

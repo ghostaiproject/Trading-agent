@@ -78,8 +78,17 @@ tunables (loaded via `python-dotenv` from `.env`); nothing else should read
 `os.environ` directly. `WatchlistEntry` parsing (`SYMBOL:CURRENCY:EXCHANGE:
 PRIMARY_EXCHANGE`, defaulting to a TSX-listed CAD stock) lives there too.
 
-Claude now sees price data, account/position state, technical indicators
-(RSI, moving averages), historical trading performance, and optionally
-real-time market intelligence (news, analyst ratings) — all passed in a
-single prompt that encourages cautious, data-driven decisions informed by
-recent outcomes.
+Claude now sees comprehensive market analysis including:
+- **Price Data**: Current price, bid/ask spreads, 30-day history
+- **Technical Indicators**: RSI, moving averages (20/50/200-day), Bollinger Bands, MACD
+- **Volatility & Momentum**: 30-day volatility, 14-day momentum, trend strength
+- **Price Levels**: Support/resistance, price position in trading range
+- **Investment Scoring**: Composite -10 to +10 score integrating all signals
+- **Risk/Reward Analysis**: Automatic assessment of upside vs downside
+- **Position Sizing**: Volatility-adjusted position size suggestions
+- **Historical Performance**: Win rates and P&L from past trades
+- **Real-time Intelligence**: Optional news, earnings, analyst ratings via web search
+
+The prompt encourages Claude to look for confluence (multiple signals aligning),
+trade with the trend, size positions based on volatility, and only take trades
+with favorable risk/reward ratios. Claude learns from its own outcomes to improve.
