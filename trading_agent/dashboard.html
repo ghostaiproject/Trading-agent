@@ -1,0 +1,1881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trading Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;800;900&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#0B0C0E;
+    --page-gradient:radial-gradient(ellipse at 50% 35%, #17181b 0%, #0c0d0f 40%, #050506 75%, #000000 100%);
+    --white:#1C1D21;
+    --ink:#F3F2ED;
+    --ink-2:#9298A0;
+    --ink-3:#5C6169;
+    --line:#212327;
+    --line-dark:#DADCDE;
+    --accent:#8B3FD4;
+    --accent-dark:#6C2CAE;
+    --red:#FF3126;
+    --gain:#14C285;
+    --amber:#E3A012;
+    --font-d:'Unbounded',sans-serif;
+    --font-b:'Inter',sans-serif;
+    --font-m:'IBM Plex Mono',monospace;
+  }
+  body[data-theme="crimson"]{--accent:#E23B3B;--accent-dark:#B82C2C;}
+  body[data-theme="cyan"]{--accent:#2FB6D9;--accent-dark:#1D8CAD;}
+  body[data-theme="amber"]{--accent:#E3A012;--accent-dark:#B87D0A;}
+  body[data-theme="emerald"]{--accent:#1FA97A;--accent-dark:#157F5C;}
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--page-gradient);
+    color:var(--ink);
+    font-family:var(--font-b);
+    font-size:14.5px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    position:relative;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:60;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0.55) 0px, rgba(0,0,0,0.55) 1px, transparent 1px, transparent 3px);
+    opacity:0.05;mix-blend-mode:overlay;
+  }
+  body::after{
+    content:"";position:fixed;inset:0;z-index:59;pointer-events:none;
+    background:radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%);
+  }
+  button{font-family:inherit;cursor:pointer;background:none;border:none;color:inherit;}
+  a{color:inherit;}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+  ::selection{background:var(--accent);color:#fff;}
+
+  /* ---------- diagonal stripe bands ---------- */
+
+
+  .wrap{max-width:1180px;margin:0 auto;padding:14px 12px 40px;padding-left:calc(12px + 62px);position:relative;z-index:1;}
+  .shell{
+    background:transparent;
+    padding:18px 16px 26px;
+    position:relative;
+    overflow:visible;
+  }
+
+  /* ---------- topbar ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;}
+  .page-eyebrow{font-family:var(--font-d);font-weight:800;font-size:16px;letter-spacing:0.3px;}
+  .topbar-right{display:flex;align-items:center;gap:8px;}
+  .icon-btn{
+    width:36px;height:36px;border:1px solid var(--line);border-radius:2px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--white);
+  }
+  .icon-btn svg{width:15px;height:15px;stroke:var(--ink);}
+  .icon-btn:hover{border-color:var(--accent);}
+  .mode-pill{
+    display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;
+    padding:8px 12px;font-family:var(--font-m);font-size:10.5px;font-weight:600;color:var(--ink-2);
+    flex-shrink:0;
+  }
+  .mode-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--amber);animation:blink 1.8s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+  /* ---------- persistent expandable icon sidebar ---------- */
+  .sb-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:34;opacity:0;pointer-events:none;transition:opacity .2s ease;}
+  .sb-backdrop.open{opacity:1;pointer-events:auto;}
+  .sidebar{
+    position:fixed;top:0;left:0;bottom:0;width:62px;
+    background:
+      radial-gradient(120% 60% at 50% 0%, rgba(139,63,212,0.14) 0%, rgba(139,63,212,0) 60%),
+      linear-gradient(180deg, #0A0A0C 0%, #050506 100%);
+    border-right:1px solid var(--line);z-index:35;
+    display:flex;flex-direction:column;overflow:hidden;
+    transition:width .22s ease, transform .22s ease;
+  }
+  .sidebar.expanded{width:214px;box-shadow:8px 0 28px rgba(0,0,0,0.55);}
+
+  .sb-ring{
+    width:24px;height:24px;border-radius:50%;border:2.2px solid var(--accent);
+    background:#000;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;position:relative;
+    overflow:hidden;box-shadow:0 0 6px rgba(139,63,212,0.55) inset;
+  }
+  .sb-ring::after{
+    content:"";position:absolute;top:50%;left:50%;width:8px;height:8px;border-radius:50%;
+    background:var(--accent);box-shadow:0 0 4px rgba(139,63,212,0.9);
+    animation:eyeScan 7s ease-in-out infinite;
+  }
+  .sb-ring::before{
+    content:"";position:absolute;top:1px;right:1px;width:4px;height:4px;border-radius:50%;
+    background:var(--red);box-shadow:0 0 3px rgba(255,49,38,0.9);z-index:2;
+    animation:blink 2.4s ease-in-out infinite;
+  }
+  @keyframes eyeScan{
+    0%,100%{transform:translate(-50%,-50%) translate(0,0);}
+    14%{transform:translate(-50%,-50%) translate(-5px,-1px);}
+    28%{transform:translate(-50%,-50%) translate(-5px,-1px);}
+    42%{transform:translate(-50%,-50%) translate(4px,2px);}
+    56%{transform:translate(-50%,-50%) translate(4px,2px);}
+    70%{transform:translate(-50%,-50%) translate(-3px,3px);}
+    84%{transform:translate(-50%,-50%) translate(1px,-2px);}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .sb-ring::after{animation:none;}
+  }
+  .sb-wordmark{
+    font-family:var(--font-d);font-weight:800;font-size:11px;line-height:1.2;letter-spacing:0.4px;
+    white-space:nowrap;opacity:0;transition:opacity .15s ease;
+  }
+  .sidebar.expanded .sb-wordmark{opacity:1;}
+
+  .sb-list{list-style:none;margin:6px 0;padding:0 9px;flex:1;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;gap:2px;}
+  .sb-item{
+    width:100%;display:flex;align-items:center;gap:13px;
+    padding:11px 9px;border-radius:12px;color:var(--ink-2);position:relative;
+    white-space:nowrap;flex-shrink:0;
+  }
+  .sb-item:hover{background:rgba(139,63,212,0.08);color:var(--ink);}
+  .sb-item.active{background:rgba(139,63,212,0.16);color:var(--ink);}
+  .sb-item.active .sb-icon svg{stroke:var(--accent);}
+  .sb-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+  .sb-icon svg{width:19px;height:19px;stroke:currentColor;fill:none;}
+  .sb-label{font-size:13px;font-weight:600;opacity:0;transition:opacity .15s ease;flex:1;text-align:left;}
+  .sidebar.expanded .sb-label{opacity:1;}
+  .sb-badge{
+    font-family:var(--font-m);font-size:9.5px;font-weight:600;min-width:16px;height:16px;
+    border-radius:8px;background:var(--paper);color:var(--ink-2);display:flex;align-items:center;justify-content:center;
+    padding:0 4px;flex-shrink:0;opacity:0;transition:opacity .12s ease;
+  }
+  .sidebar.expanded .sb-badge{opacity:1;}
+  .sb-badge.accent{background:var(--accent);color:#fff;}
+  .sb-badge.red{background:var(--accent);color:#fff;}
+  .sb-dot{
+    position:absolute;top:8px;left:30px;width:7px;height:7px;border-radius:50%;
+    background:var(--ink-3);opacity:1;transition:opacity .12s ease;
+  }
+  .sidebar.expanded .sb-dot{opacity:0;}
+  .sb-dot.accent{background:var(--accent);}
+  .sb-dot.red{background:var(--accent);}
+
+  .sb-foot{padding:12px 9px 16px;flex-shrink:0;}
+  .sb-foot .mode-pill{width:100%;justify-content:center;padding:9px 0;}
+  .sb-foot .sb-label{opacity:0;flex:none;}
+  .sidebar.expanded .sb-foot .sb-label{opacity:1;}
+
+  /* ---------- HUD ---------- */
+  .hud{display:flex;gap:8px;margin-bottom:22px;}
+  .hud-item{flex:1;padding:9px 12px;background:var(--white);border:1px solid var(--accent);border-radius:0;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);box-shadow:0 6px 14px rgba(0,0,0,0.5);}
+  .hud-item span{display:block;font-size:9px;letter-spacing:0.8px;color:var(--ink-3);margin-bottom:2px;}
+  .hud-item b{font-family:var(--font-m);font-size:13px;font-weight:500;color:var(--ink);}
+  .hud-item b.warn{color:var(--amber);}
+
+  /* ---------- pages ---------- */
+  .page{display:none;}
+  .page.active{display:block;animation:fadein .3s ease;}
+  @keyframes fadein{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+  .page-head{margin-bottom:16px;}
+  .page-summary{font-family:var(--font-b);font-size:13.5px;font-weight:500;color:var(--ink-2);margin-bottom:4px;line-height:1.4;}
+  .page-sub{font-family:var(--font-m);font-size:10.5px;color:var(--ink-3);letter-spacing:0.3px;}
+
+  /* ---------- hero (overview only) ---------- */
+  .hero{margin-bottom:22px;}
+  .hero-top{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:6px;}
+  .hero h1{
+    font-family:var(--font-d);font-weight:800;font-size:clamp(24px,7vw,34px);
+    line-height:1.08;letter-spacing:-0.2px;margin:0;max-width:520px;
+  }
+  .cta-pill{
+    display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;
+    border-radius:999px;padding:12px 20px;font-family:var(--font-b);font-weight:700;font-size:13px;
+    flex-shrink:0;white-space:nowrap;
+  }
+  .cta-pill:hover{background:var(--accent-dark);}
+  .cta-pill svg{width:13px;height:13px;stroke:#fff;}
+
+  /* ---------- card system ---------- */
+  .card-black{background:var(--ink);color:var(--white);border-radius:6px;padding:18px;position:relative;}
+  .card-white{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:16px;}
+
+  .arrow-circle{
+    width:40px;height:40px;border-radius:50%;background:var(--accent);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .arrow-circle svg{width:15px;height:15px;stroke:#fff;}
+  .arrow-circle.sm{width:28px;height:28px;}
+  .arrow-circle.sm svg{width:11px;height:11px;}
+  .arrow-circle.ink{background:var(--ink);}
+  .arrow-circle.ink svg{stroke:var(--white);}
+
+  .tag-pill{
+    font-family:var(--font-m);font-size:10px;letter-spacing:0.3px;
+    border-radius:999px;padding:4px 10px;display:inline-block;
+  }
+  .tag-pill.light{background:rgba(16,18,20,0.08);color:var(--white);}
+  .tag-pill.outline{border:1px solid var(--line);color:var(--ink-2);}
+  .tag-pill.dark{background:var(--ink);color:var(--white);}
+  .tag-pill.gain{background:rgba(20,194,133,0.14);color:var(--gain);}
+  .tag-pill.loss{background:rgba(139,63,212,0.14);color:var(--accent);}
+  .tag-pill.hold{background:rgba(227,160,18,0.14);color:var(--amber);}
+
+  /* card-black link rows (now a light card on the dark shell) */
+  .cb-label{font-size:11.5px;color:rgba(16,18,20,0.6);margin:10px 0 4px;}
+  .cb-head{font-family:var(--font-d);font-weight:700;font-size:17px;line-height:1.25;margin-bottom:10px;}
+  .cb-links{border-top:1px solid rgba(16,18,20,0.14);}
+  .cb-link{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 0;border-bottom:1px solid rgba(16,18,20,0.14);
+    font-size:13.5px;font-weight:500;
+  }
+  .cb-link svg{width:13px;height:13px;stroke:var(--white);flex-shrink:0;}
+
+  /* ---------- overview grid ---------- */
+  .ov-grid{display:flex;flex-direction:column;gap:10px;margin-bottom:8px;}
+  .ov-row2{display:flex;gap:10px;}
+  .ov-row2 > *{flex:1;min-width:0;}
+  .ov-hold{
+    display:flex;flex-direction:column;justify-content:space-between;height:100%;
+  }
+  .ov-hold-top{display:flex;justify-content:space-between;align-items:flex-start;}
+  .ov-hold-sym{font-family:var(--font-d);font-weight:800;font-size:16px;}
+  .ov-hold-chg{font-family:var(--font-m);font-size:20px;font-weight:600;color:var(--gain);margin-top:10px;}
+  .ov-hold-label{font-size:10.5px;color:var(--ink-3);margin-top:2px;}
+  .ov-hold-chart{margin-top:10px;}
+  .ov-hold-chart svg{width:100%;height:36px;display:block;}
+
+  .ov-hero{
+    border-radius:6px;position:relative;overflow:hidden;min-height:260px;
+    display:flex;flex-direction:column;justify-content:flex-end;background:var(--ink);
+  }
+  .ov-hero-art{position:absolute;inset:0;}
+  .ov-hero-art svg{width:100%;height:100%;display:block;}
+  .ov-hero-top{position:absolute;top:12px;right:12px;display:flex;gap:6px;z-index:2;}
+  .ov-hero-cat{position:absolute;bottom:132px;left:14px;z-index:2;}
+  .ov-hero-body{position:relative;z-index:2;padding:16px;background:linear-gradient(0deg, rgba(243,242,237,0.94) 40%, rgba(243,242,237,0));}
+  .ov-hero-headline{font-family:var(--font-d);font-weight:700;font-size:19px;line-height:1.3;color:var(--white);max-width:80%;}
+  .ov-hero-arrow{position:absolute;bottom:14px;right:14px;z-index:2;}
+
+  /* ---------- positions ---------- */
+  .pos-list{display:flex;flex-direction:column;gap:8px;margin-bottom:8px;}
+  .pos-row{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;box-shadow:0 6px 16px rgba(0,0,0,0.45);}
+  .pos-sym{font-family:var(--font-d);font-weight:700;font-size:14px;}
+  .pos-detail{font-family:var(--font-m);font-size:10.5px;color:var(--ink-3);margin-top:2px;}
+  .pos-detail2{font-family:var(--font-m);font-size:10px;color:var(--ink-3);margin-top:3px;}
+  .pos-detail2 b{font-weight:500;}
+  .pos-detail2 .up{color:var(--gain);}
+  .pos-detail2 .down{color:var(--accent);}
+  .pos-r{text-align:right;}
+  .pos-value{font-family:var(--font-m);font-size:13px;}
+  .pos-pnl{font-family:var(--font-m);font-size:11px;}
+  .pos-pnl.up{color:var(--gain);}
+  .pos-pnl.down{color:var(--accent);}
+
+  /* ---------- market cards ---------- */
+  .m-list{display:flex;flex-direction:column;gap:8px;}
+  details.m-card{background:var(--white);border:1px solid var(--line);border-radius:6px;}
+  details.m-card summary{list-style:none;cursor:pointer;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;gap:10px;}
+  details.m-card summary::-webkit-details-marker{display:none;}
+  .m-left{display:flex;align-items:baseline;gap:10px;}
+  .m-sym{font-family:var(--font-d);font-weight:700;font-size:14px;}
+  .m-price{font-family:var(--font-m);font-size:12px;color:var(--ink-2);}
+  .m-right{display:flex;align-items:center;gap:8px;}
+  .m-score{font-family:var(--font-m);font-size:13px;font-weight:600;}
+  .m-score.buy{color:var(--gain);}
+  .m-score.hold{color:var(--amber);}
+  .m-score.sell{color:var(--accent);}
+  .chevron{display:inline-block;color:var(--ink-3);transition:transform .2s ease;font-size:11px;}
+  details[open] .chevron{transform:rotate(90deg);color:var(--accent);}
+  .m-body{padding:0 14px 16px;border-top:1px solid var(--line);}
+  .m-facts{display:flex;flex-direction:column;gap:5px;margin:10px 0;font-family:var(--font-m);font-size:11.5px;}
+  .m-fact{display:flex;justify-content:space-between;color:var(--ink-2);}
+  .m-fact b{color:var(--ink);font-weight:500;}
+  .m-breakdown{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:4px;overflow:hidden;margin:10px 0;}
+  .m-bd-cell{background:#17191D;padding:7px 4px;text-align:center;}
+  .m-bd-cell span{display:block;font-size:8.5px;letter-spacing:0.4px;color:var(--ink-3);margin-bottom:2px;}
+  .m-bd-cell b{font-family:var(--font-m);font-size:11.5px;}
+  .m-bd-cell b.pos{color:var(--gain);}
+  .m-bd-cell b.neg{color:var(--accent);}
+  .m-rationale{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:4px;}
+  .m-rationale li{font-size:12px;color:var(--ink-2);padding-left:11px;position:relative;}
+  .m-rationale li::before{content:"›";position:absolute;left:0;color:var(--accent);font-weight:700;}
+  .m-size{font-family:var(--font-m);font-size:10.5px;color:var(--ink-3);}
+  .m-size b{color:var(--ink-2);}
+
+  /* ---------- news ---------- */
+  .n-filters{display:flex;gap:8px;margin-bottom:14px;}
+  .n-filter{font-family:var(--font-m);font-size:11px;padding:7px 14px;border:1px solid var(--line);color:var(--ink-2);border-radius:999px;}
+  .n-filter.active{border-color:var(--accent);color:var(--accent);background:rgba(139,63,212,0.14);}
+  .n-list{display:flex;flex-direction:column;gap:10px;}
+  .n-card{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:12px;}
+  .n-card.favorited{border-color:var(--ink);}
+  .n-media{position:relative;height:82px;border-radius:4px;overflow:hidden;background:#17191D;margin-bottom:10px;}
+  .n-media svg{width:100%;height:100%;display:block;}
+  .n-star{
+    position:absolute;top:7px;right:7px;width:22px;height:22px;border-radius:50%;
+    background:rgba(16,18,20,0.55);display:flex;align-items:center;justify-content:center;
+    font-size:12px;color:var(--ink-3);
+  }
+  .n-card.favorited .n-star{color:var(--accent);}
+  .n-meta{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+  .n-cat{font-family:var(--font-m);font-size:9.5px;letter-spacing:0.5px;color:var(--ink-2);border:1px solid var(--line);padding:2px 7px;border-radius:999px;}
+  .n-time{font-family:var(--font-m);font-size:10.5px;color:var(--ink-3);}
+  .n-headline{font-family:var(--font-d);font-weight:700;font-size:14px;line-height:1.35;margin-bottom:6px;}
+  .n-desc{font-size:12.5px;color:var(--ink-2);line-height:1.55;margin:0 0 10px;}
+  .n-bottom{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;}
+  .n-symbols{display:flex;gap:6px;flex-wrap:wrap;}
+  .n-chip{font-family:var(--font-m);font-size:10px;color:var(--ink-2);border:1px solid var(--line);padding:2px 8px;border-radius:999px;}
+  .n-chip.held{color:var(--white);background:var(--ink);border-color:var(--ink);}
+  .n-impact{font-family:var(--font-m);font-size:13px;font-weight:600;}
+  .n-impact.up{color:var(--gain);}
+  .n-impact.down{color:var(--accent);}
+  .n-more{display:inline-flex;align-items:center;gap:5px;font-family:var(--font-b);font-size:12px;font-weight:700;color:var(--accent);text-decoration:none;margin-top:8px;}
+  .n-more:hover{text-decoration:underline;}
+  .n-more svg{width:10px;height:10px;stroke:var(--accent);}
+
+  /* ---------- proposals ---------- */
+  .p-list{display:flex;flex-direction:column;gap:10px;}
+  .p-card{background:var(--white);border:1px solid var(--line);border-left:3px solid var(--ink-3);border-radius:6px;padding:14px;box-shadow:0 8px 20px rgba(0,0,0,0.5);}
+  .p-card.buy{border-left-color:var(--gain);}
+  .p-card.sell{border-left-color:var(--accent);}
+  .p-card.blocked{border-left-color:var(--amber);}
+  .p-top{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;}
+  .p-action{display:flex;align-items:baseline;gap:7px;}
+  .p-verb{font-family:var(--font-d);font-weight:700;font-size:13.5px;}
+  .p-verb.sell{color:var(--accent);}
+  .p-verb.buy{color:var(--gain);}
+  .p-verb.blocked{color:var(--amber);}
+  .p-qty{font-family:var(--font-m);font-size:13.5px;}
+  .p-sym{font-family:var(--font-d);font-weight:700;font-size:13.5px;}
+  .p-order-type{font-family:var(--font-m);font-size:9.5px;color:var(--ink-3);border:1px solid var(--line);border-radius:999px;padding:1px 8px;}
+  .p-conf{font-family:var(--font-m);font-size:10.5px;color:var(--ink-3);}
+  .p-conf b{color:var(--ink-2);}
+  .p-ref{font-family:var(--font-m);font-size:10.5px;color:var(--ink-3);margin-bottom:8px;}
+  .p-ref b{color:var(--ink-2);font-weight:500;}
+  .risk-line{display:flex;align-items:center;gap:7px;font-family:var(--font-m);font-size:11px;padding:7px 10px;margin-bottom:8px;border-radius:4px;}
+  .risk-line.ok{background:rgba(20,194,133,0.14);color:var(--gain);}
+  .risk-line.no{background:rgba(139,63,212,0.14);color:var(--accent);}
+  details.p-rationale{margin-bottom:12px;}
+  details.p-rationale summary{list-style:none;cursor:pointer;font-family:var(--font-m);font-size:10.5px;color:var(--ink-3);display:flex;align-items:center;gap:5px;}
+  details.p-rationale summary::-webkit-details-marker{display:none;}
+  details.p-rationale p{font-size:12px;color:var(--ink-2);margin:8px 0 0;}
+  .p-chart{margin-top:10px;background:var(--paper);border:1px solid var(--line);padding:8px 8px 6px;}
+  .p-chart-label{font-family:var(--font-m);font-size:9px;letter-spacing:0.5px;color:var(--ink-3);margin-bottom:4px;display:flex;justify-content:space-between;}
+  .p-chart svg{width:100%;height:auto;display:block;}
+  .chart-tabs{display:flex;gap:4px;margin-bottom:6px;}
+  .chart-tab{
+    all:unset;flex:1;text-align:center;padding:4px 0;font-family:var(--font-m);font-size:9px;
+    letter-spacing:0.4px;color:var(--ink-3);border:1px solid var(--line);cursor:pointer;
+    transition:border-color .15s ease,color .15s ease;
+  }
+  .chart-tab:hover{color:var(--ink);}
+  .chart-tab.active{color:var(--accent);border-color:var(--accent);}
+  .p-actions{display:flex;justify-content:flex-end;gap:8px;}
+  .btn{font-family:var(--font-b);font-weight:700;font-size:12px;padding:9px 18px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2);}
+  .btn-deny:hover{border-color:var(--accent);color:var(--accent);}
+  .btn-approve{background:var(--ink);border-color:var(--ink);color:var(--white);}
+  .btn-approve:hover{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .p-resolved{display:flex;justify-content:flex-end;align-items:center;gap:6px;font-family:var(--font-m);font-size:11px;}
+  .p-resolved.approved{color:var(--gain);}
+  .p-resolved.denied{color:var(--accent);}
+  .p-card.resolved{opacity:0.5;}
+
+  /* ---------- performance ---------- */
+  .perf-row{display:flex;gap:8px;margin-bottom:14px;}
+  .perf-cell{flex:1;background:var(--white);padding:12px 10px;border:1px solid var(--accent);border-radius:0;clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px);box-shadow:0 6px 14px rgba(0,0,0,0.5);}
+  .perf-cell span{display:block;font-size:9px;letter-spacing:0.5px;color:var(--ink-3);margin-bottom:4px;}
+  .perf-cell b{font-family:var(--font-m);font-size:15px;color:var(--gain);}
+  .j-list{display:flex;flex-direction:column;gap:8px;}
+  .j-row{background:var(--white);border:1px solid var(--line);border-radius:6px;padding:10px 13px;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 6px 16px rgba(0,0,0,0.45);}
+  .j-left{display:flex;align-items:center;gap:10px;}
+  .j-check{font-family:var(--font-m);font-size:13px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;}
+  .j-check.win{background:var(--gain);}
+  .j-check.loss{background:var(--accent);}
+  .j-sym{font-family:var(--font-d);font-weight:700;font-size:13px;}
+  .j-meta{font-family:var(--font-m);font-size:10px;color:var(--ink-3);}
+  .j-pnl{font-family:var(--font-m);font-size:11.5px;}
+  .j-pnl.up{color:var(--gain);}
+  .j-pnl.down{color:var(--accent);}
+
+  /* ---------- log ---------- */
+  .log-panel{background:var(--ink);border-radius:6px;height:60vh;overflow-y:auto;padding:8px 0;}
+
+  /* ---------- settings page ---------- */
+  .set-list{display:flex;flex-direction:column;gap:10px;}
+  .set-card{display:flex;flex-direction:column;}
+  .set-card-title{font-family:var(--font-d);font-weight:700;font-size:13.5px;margin-bottom:10px;}
+  .switch{display:flex;align-items:center;gap:10px;cursor:pointer;padding:8px 0;}
+  .switch input{display:none;}
+  .switch-track{width:36px;height:20px;border-radius:2px;border:1px solid var(--line);background:var(--paper);position:relative;flex-shrink:0;transition:border-color .15s ease;}
+  .switch-thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;background:var(--ink-3);transition:left .15s ease,background .15s ease;}
+  .switch input:checked ~ .switch-track{border-color:var(--accent);}
+  .switch input:checked ~ .switch-track .switch-thumb{left:18px;background:var(--accent);}
+  .switch-label{font-size:13px;color:var(--ink-2);flex:1;}
+  .switch-sub{display:block;font-family:var(--font-m);font-size:9.5px;color:var(--ink-3);margin-top:2px;}
+  .set-warning{
+    display:none;font-size:11px;color:var(--amber);background:rgba(227,160,18,0.1);
+    border:1px solid rgba(227,160,18,0.3);padding:8px 10px;margin:2px 0 8px;line-height:1.5;
+  }
+  .set-warning.show{display:block;}
+  .set-field{margin-top:6px;padding-top:10px;border-top:1px solid var(--line);}
+  .set-category{margin-top:6px;padding-top:10px;border-top:1px solid var(--line);}
+  .set-cat-label{
+    display:inline-block;font-family:var(--font-m);font-size:9.5px;font-weight:600;letter-spacing:0.6px;
+    text-transform:uppercase;color:var(--accent);background:rgba(139,63,212,0.14);
+    border:1px solid var(--accent);border-radius:999px;padding:3px 10px;margin-bottom:8px;
+  }
+  .set-category .set-field{margin-top:0;padding-top:0;border-top:none;}
+  .set-field input:disabled{color:var(--ink-3);cursor:not-allowed;opacity:0.7;}
+  .set-field label{display:block;font-family:var(--font-m);font-size:10.5px;font-weight:600;letter-spacing:0.5px;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px;}
+  .set-field input{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:2px;font-size:13px;background:var(--paper);color:var(--ink);font-family:var(--font-m);}
+  .set-field input:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+  .set-hint{font-size:10.5px;color:var(--ink-3);margin-top:5px;line-height:1.5;}
+  .set-info-row{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--ink-2);padding:7px 0;border-top:1px solid var(--line);}
+  .set-info-row:first-of-type{border-top:none;}
+  .set-info-r{margin-left:auto;font-family:var(--font-m);font-size:10.5px;color:var(--gain);}
+  .set-dot{width:6px;height:6px;border-radius:50%;background:var(--gain);flex-shrink:0;}
+  .set-link-btn{all:unset;display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:10px;padding:10px 12px;border:1px solid var(--line);color:var(--ink-2);font-size:12.5px;cursor:pointer;transition:border-color .15s ease,color .15s ease;}
+  .set-link-btn:hover{border-color:var(--accent);color:var(--ink);}
+  .log-line{font-family:var(--font-m);font-size:10.8px;line-height:1.75;padding:2px 14px;color:#585F66;white-space:pre-wrap;word-break:break-word;}
+  .log-line .ts{color:#9AA0A6;}
+  .log-line .ev{display:inline-block;min-width:98px;}
+  .log-line.rej .ev{color:var(--accent);}
+  .log-line.ok .ev{color:var(--gain);}
+  .log-line.human .ev{color:var(--amber);}
+  .log-line.order .ev{color:#2E7BC4;}
+  .log-line.cyc .ev{color:#9AA0A6;}
+  .log-line.newline{animation:flashin .7s ease;}
+  @keyframes flashin{from{background:rgba(16,18,20,0.08);}to{background:transparent;}}
+
+  /* ---------- bottom captions ---------- */
+  .bottom-caps{display:flex;justify-content:space-between;padding:16px 4px 6px;}
+  .bottom-caps div{font-family:var(--font-d);font-weight:900;font-size:15px;line-height:1.05;letter-spacing:-0.2px;}
+  .bottom-caps .r{text-align:right;}
+
+  @media(min-width:860px){
+    .ov-row2{display:grid;grid-template-columns:1fr;}
+    .ov-grid{display:grid;grid-template-columns:1fr 1.3fr;gap:12px;align-items:stretch;}
+    .ov-grid > .card-black{grid-column:1 / -1;}
+    .ov-hero{min-height:100%;}
+  }
+  @media(max-width:420px){
+    .hud-item{padding:7px 6px;}
+    .hud-item b{font-size:11px;}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .mode-pill .dot,.page.active,.log-line.newline{animation:none;}
+  }
+
+  /* ---------- animated sacred-geometry backdrop (grayscale, generated shapes) ---------- */
+  .bg-mandala{
+    position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none;background:var(--page-gradient);
+    display:flex;align-items:center;justify-content:center;
+    -webkit-mask-image:radial-gradient(circle,#000 48%,transparent 86%);
+    mask-image:radial-gradient(circle,#000 48%,transparent 86%);
+  }
+  .bg-geo{
+    position:absolute;top:50%;left:50%;fill:none;stroke-width:1.4;
+  }
+  .bg-geo-1{
+    width:78vmax;height:78vmax;stroke:rgba(110,110,118,0.4);
+    filter:blur(6px);
+    animation:mandalaSpin 220s linear infinite;
+  }
+  .bg-geo-2{
+    width:52vmax;height:52vmax;stroke:rgba(85,85,92,0.32);
+    filter:blur(7px);
+    animation:mandalaSpin 160s linear infinite reverse;
+  }
+  @keyframes mandalaSpin{
+    from{transform:translate(-50%,-50%) rotate(0deg);}
+    to{transform:translate(-50%,-50%) rotate(360deg);}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .bg-geo-1,.bg-geo-2{animation:none;}
+  }
+
+  /* ---------- window bevel frames (bold cyberpunk HUD panel style) ---------- */
+  .card-black,.card-white,details.m-card,.n-card,.log-panel{
+    border-radius:0;
+    clip-path:polygon(16px 0,100% 0,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%,0 16px);
+    border:2px solid var(--accent);
+    box-shadow:0 0 0 1px rgba(139,63,212,0.25),0 0 18px rgba(139,63,212,0.3),0 10px 26px rgba(0,0,0,0.55);
+  }
+  .p-card{
+    border-radius:0;
+    clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% calc(100% - 16px),calc(100% - 16px) 100%,0 100%);
+  }
+
+  /* ---------- fullscreen mode ---------- */
+  body.fullscreen .sidebar{transform:translateX(-100%);}
+  body.fullscreen .wrap{padding-left:12px;}
+  .sb-restore{
+    display:none;position:fixed;top:16px;left:16px;z-index:41;
+    width:42px;height:42px;border-radius:50%;background:var(--white);
+    border:1px solid var(--line);align-items:center;justify-content:center;
+    box-shadow:0 6px 18px rgba(0,0,0,0.35);
+  }
+  body.fullscreen .sb-restore{display:flex;}
+
+  /* ---------- sb-brand as button ---------- */
+  .sb-brand{all:unset;display:flex;align-items:center;gap:10px;padding:18px 0 14px 20px;flex-shrink:0;cursor:pointer;transition:opacity .15s ease;}
+  .sb-brand:hover{opacity:0.7;}
+
+  /* ---------- expand tab ---------- */
+  .sb-toggle{
+    position:absolute;top:50%;left:62px;transform:translateY(-50%);
+    width:18px;height:56px;border-radius:0 12px 12px 0;
+    background:var(--accent);border:none;border-left:none;
+    display:flex;align-items:center;justify-content:center;
+    z-index:2;transition:left .22s ease,background .15s ease;cursor:ew-resize;
+    box-shadow:2px 0 10px rgba(0,0,0,0.25);touch-action:none;
+  }
+  .sidebar.expanded .sb-toggle{left:214px;}
+  .sb-toggle:hover{background:var(--accent-dark);}
+  .sb-toggle svg{width:12px;height:12px;stroke:#fff;stroke-width:3;transition:transform .22s ease;}
+  .sidebar.expanded .sb-toggle svg{transform:rotate(180deg);}
+  .sb-toggle-tip{
+    position:absolute;left:26px;top:50%;transform:translateY(-50%);
+    background:var(--ink);color:var(--white);font-family:var(--font-b);font-weight:600;font-size:11px;
+    padding:6px 10px;border-radius:8px;white-space:nowrap;
+    opacity:0;pointer-events:none;transition:opacity .12s ease;
+  }
+  .sb-toggle-tip.show{opacity:1;}
+  .sb-edge{
+    position:absolute;top:0;right:-4px;width:8px;height:100%;
+    cursor:ew-resize;z-index:1;touch-action:none;
+  }
+  .sb-edge:hover{background:rgba(139,63,212,0.25);}
+
+  /* ---------- user / session settings button ---------- */
+  .sb-user-btn{all:unset;width:100%;display:flex;align-items:center;gap:13px;
+    padding:11px 9px;border-radius:12px;color:var(--ink-2);white-space:nowrap;cursor:pointer;transition:background .15s ease;box-sizing:border-box;}
+  .sb-user-btn:hover{background:rgba(139,63,212,0.08);color:var(--ink);}
+  .sb-avatar{
+    width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-weight:700;font-size:10px;
+  }
+  .sb-user-btn .sb-label{font-size:13px;font-weight:600;opacity:0;transition:opacity .15s ease;flex:1;text-align:left;}
+  .sidebar.expanded .sb-user-btn .sb-label{opacity:1;}
+
+  /* ---------- settings modal ---------- */
+  .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:50;opacity:0;pointer-events:none;transition:opacity .2s ease;}
+  .modal-backdrop.open{opacity:1;pointer-events:auto;}
+  .modal-panel{
+    position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0.9);
+    background:var(--white);border:1px solid var(--accent);border-radius:4px;
+    width:90%;max-width:320px;z-index:51;opacity:0;pointer-events:none;transition:all .2s ease;
+    box-shadow:0 0 0 1px rgba(139,63,212,0.18),0 20px 60px rgba(0,0,0,0.65);
+    overflow:hidden;
+  }
+  .modal-panel::before{
+    content:"";position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0.5) 0px, rgba(0,0,0,0.5) 1px, transparent 1px, transparent 3px);
+    opacity:0.06;mix-blend-mode:overlay;
+  }
+  .modal-corner{position:absolute;width:13px;height:13px;pointer-events:none;z-index:3;}
+  .modal-corner.tl{top:0;left:0;border-top:2px solid var(--accent);border-left:2px solid var(--accent);}
+  .modal-corner.tr{top:0;right:0;border-top:2px solid var(--accent);border-right:2px solid var(--accent);}
+  .modal-corner.bl{bottom:0;left:0;border-bottom:2px solid var(--accent);border-left:2px solid var(--accent);}
+  .modal-corner.br{bottom:0;right:0;border-bottom:2px solid var(--accent);border-right:2px solid var(--accent);}
+  #settingsBackdrop.open ~ #settingsModal,
+  #scaleBackdrop.open ~ #scaleModal{opacity:1;pointer-events:auto;transform:translate(-50%,-50%) scale(1);}
+  .modal-head{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:16px;border-bottom:1px solid var(--line);}
+  .modal-head h3{margin:0;font-family:var(--font-m);font-size:12px;font-weight:600;letter-spacing:1.4px;display:flex;align-items:center;gap:8px;}
+  .modal-rec{width:6px;height:6px;border-radius:50%;background:var(--red);box-shadow:0 0 4px rgba(255,49,38,0.9);animation:blink 2.4s ease-in-out infinite;flex-shrink:0;}
+  .modal-close{all:unset;width:26px;height:26px;border-radius:2px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:var(--ink);transition:background .15s ease;}
+  .modal-close:hover{background:var(--line);}
+  .modal-body{position:relative;z-index:2;padding:16px;}
+  .setting-row{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+  .setting-row label{font-family:var(--font-m);font-size:10.5px;font-weight:600;letter-spacing:0.8px;text-transform:uppercase;color:var(--ink-3);}
+  .setting-row input{padding:8px 12px;border:1px solid var(--line);border-radius:2px;font-size:13px;background:var(--paper);color:var(--ink);font-family:var(--font-m);}
+  .setting-row input:focus{outline:2px solid var(--accent);outline-offset:-1px;}
+  .modal-save{all:unset;width:100%;padding:10px 14px;background:var(--accent);color:#fff;border-radius:2px;font-weight:700;font-family:var(--font-m);font-size:12px;letter-spacing:1px;text-transform:uppercase;cursor:pointer;transition:background .15s ease;text-align:center;}
+  .modal-save:hover{background:var(--accent-dark);}
+  .theme-row{display:flex;align-items:center;gap:8px;}
+  .theme-swatch{
+    width:24px;height:24px;border-radius:50%;background:var(--sw);
+    border:2px solid transparent;flex-shrink:0;box-shadow:0 0 6px var(--sw);
+    transition:border-color .15s ease,transform .15s ease;
+  }
+  .theme-swatch:hover{transform:scale(1.1);}
+  .theme-swatch.active{border-color:var(--ink);}
+  .theme-cycle{
+    width:26px;height:26px;border-radius:2px;border:1px solid var(--line);
+    display:flex;align-items:center;justify-content:center;margin-left:auto;flex-shrink:0;
+  }
+  .theme-cycle svg{width:13px;height:13px;stroke:var(--ink);}
+  .theme-cycle:hover{border-color:var(--accent);}
+  .scale-readout{font-family:var(--font-m);font-size:32px;font-weight:600;color:var(--accent);text-align:center;margin-bottom:12px;letter-spacing:1px;}
+  .scale-controls{display:flex;align-items:center;gap:10px;margin-bottom:12px;}
+  .scale-btn{
+    all:unset;width:36px;height:36px;flex-shrink:0;border:1px solid var(--accent);color:var(--accent);
+    font-size:18px;font-weight:700;display:flex;align-items:center;justify-content:center;cursor:pointer;
+    transition:background .15s ease,color .15s ease;
+  }
+  .scale-btn:hover{background:var(--accent);color:#fff;}
+  .scale-controls input[type="range"]{flex:1;accent-color:var(--accent);}
+  .scale-presets{display:flex;gap:8px;}
+  .scale-presets button{
+    all:unset;flex:1;text-align:center;padding:8px 4px;border:1px solid var(--line);
+    font-family:var(--font-m);font-size:10.5px;letter-spacing:0.6px;text-transform:uppercase;color:var(--ink-2);
+    cursor:pointer;transition:border-color .15s ease,color .15s ease;
+  }
+  .scale-presets button:hover{border-color:var(--accent);color:var(--ink);}
+  #scaleModal{
+    max-width:200px;
+    background:rgba(10,10,12,0.45);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  }
+  #scaleModal .modal-head{padding:10px 12px;}
+  #scaleModal .modal-head h3{font-size:10px;}
+  #scaleModal .modal-body{padding:12px;}
+  #scaleModal .scale-readout{font-size:22px;margin-bottom:8px;}
+  #scaleModal .scale-controls{margin-bottom:8px;gap:6px;}
+  #scaleModal .scale-btn{width:28px;height:28px;font-size:15px;}
+  #scaleModal .scale-presets button{padding:6px 3px;font-size:9px;}
+
+</style>
+</head>
+<body>
+<div class="bg-mandala">
+  <svg class="bg-geo bg-geo-1" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet">
+    <circle cx="100" cy="100" r="90"/>
+    <circle cx="100" cy="100" r="35"/>
+    <circle cx="135" cy="100" r="35"/>
+    <circle cx="117.5" cy="130.3" r="35"/>
+    <circle cx="82.5" cy="130.3" r="35"/>
+    <circle cx="65" cy="100" r="35"/>
+    <circle cx="82.5" cy="69.7" r="35"/>
+    <circle cx="117.5" cy="69.7" r="35"/>
+    <circle cx="100" cy="100" r="15"/>
+  </svg>
+  <svg class="bg-geo bg-geo-2" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid meet">
+    <circle cx="100" cy="100" r="55"/>
+    <polygon points="175,100 62.5,165 62.5,35" />
+    <polygon points="137.5,165 25,100 137.5,35" />
+  </svg>
+</div>
+
+  <button class="sb-restore" id="sbRestore" onclick="toggleFullscreen()" aria-label="Show menu">
+    <span class="sb-ring"></span>
+  </button>
+  <div class="sb-backdrop" id="sbBackdrop" onclick="collapseSidebar()"></div>
+  <nav class="sidebar" id="sidebar">
+    <div class="sb-edge" id="sbEdge"></div>
+    <button class="sb-brand" onclick="toggleFullscreen()" aria-label="Toggle fullscreen">
+      <span class="sb-ring"></span>
+      <span class="sb-wordmark">TRADING<br>AGENT</span>
+    </button>
+    <button class="sb-toggle" id="sbToggle" aria-label="Drag to expand menu" title="Drag to expand">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+      <span class="sb-toggle-tip" id="sbToggleTip">Expand</span>
+    </button>
+
+    <ul class="sb-list" id="sbList">
+      <li>
+        <button class="sb-item active" data-page="overview" aria-label="Overview">
+          <span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/></svg></span>
+          <span class="sb-label">Overview</span>
+        </button>
+      </li>
+      <li>
+        <button class="sb-item" data-page="market" aria-label="Market read">
+          <span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></span>
+          <span class="sb-label">Market read</span>
+        </button>
+      </li>
+      <li>
+        <button class="sb-item" data-page="news" aria-label="News">
+          <span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9.5h8M8 13h8M8 16.5h5"/></svg></span>
+          <span class="sb-label">News</span>
+          <span class="sb-badge" id="badgeNewsS">3</span>
+          <span class="sb-dot" id="dotNews"></span>
+        </button>
+      </li>
+      <li>
+        <button class="sb-item" data-page="approvals" aria-label="Approvals">
+          <span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5L16 9.5"/></svg></span>
+          <span class="sb-label">Approvals</span>
+          <span class="sb-badge accent" id="badgeApprovalsS">2</span>
+          <span class="sb-dot accent" id="dotApprovals"></span>
+        </button>
+      </li>
+      <li>
+        <button class="sb-item" data-page="blocked" aria-label="Blocked">
+          <span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/></svg></span>
+          <span class="sb-label">Blocked</span>
+          <span class="sb-badge red" id="badgeBlockedS">1</span>
+          <span class="sb-dot red" id="dotBlocked"></span>
+        </button>
+      </li>
+      <li>
+        <button class="sb-item" data-page="performance" aria-label="Performance">
+          <span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V11M12 20V4M20 20v-6"/></svg></span>
+          <span class="sb-label">Performance</span>
+        </button>
+      </li>
+      <li>
+        <button class="sb-item" data-page="settings" aria-label="Settings">
+          <span class="sb-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></span>
+          <span class="sb-label">Settings</span>
+        </button>
+      </li>
+    </ul>
+
+    <div class="sb-foot">
+      <button class="sb-user-btn" id="sbUserBtn" onclick="openSettings()" aria-label="Session settings">
+        <span class="sb-avatar" id="sbAvatar">M</span>
+        <span class="sb-label" id="sbUserLabel">Mura</span>
+      </button>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <div class="shell">
+
+      <div class="topbar">
+        <div class="page-eyebrow" id="pageEyebrow">Overview</div>
+        <div class="topbar-right">
+          <button class="icon-btn" onclick="openScale()" aria-label="Adjust display scale">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v6h6M20 10V4h-6M20 4l-7 7M4 20l7-7"/></svg>
+          </button>
+          <button class="mode-pill" onclick="openSettings()" aria-label="Session settings">
+            <span class="dot"></span><span id="topbarUserLabel">Mura</span>
+          </button>
+        </div>
+        <div class="mode-pill" id="apiStatus" title="Dashboard API connection">✓ Connected</div>
+      </div>
+
+      <div class="hud">
+        <div class="hud-item"><span>NET LIQ</span><b id="netLiqValue">$38,500.00</b></div>
+        <div class="hud-item"><span>CASH</span><b id="cashBalValue">$19,000.00</b></div>
+        <div class="hud-item"><span>BUY PWR</span><b>$28,000.00</b></div>
+        <div class="hud-item"><span>EXPOSURE</span><b class="warn">49.4%</b></div>
+      </div>
+
+      <main>
+
+        <!-- OVERVIEW -->
+        <section class="page active" id="page-overview">
+
+          <div class="hero">
+            <div class="hero-top">
+              <h1>Real signals. Real risk checks. You make the call.</h1>
+              <button class="cta-pill" onclick="goPage('approvals')">Review trades
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="ov-grid">
+
+            <div class="card-black">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                <span class="tag-pill light">AUTOMATED EXECUTION</span>
+                <button class="arrow-circle sm" onclick="goPage('settings')" aria-label="View execution settings">
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                </button>
+              </div>
+              <div class="cb-label">Sector-7 Capital, Exec Division</div>
+              <div class="cb-head">We watch the market. You approve every trade.</div>
+              <div class="cb-links">
+                <button class="cb-link" onclick="goPage('approvals')" style="width:100%;background:none;border:none;">
+                  2 trades awaiting your approval
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                </button>
+                <button class="cb-link" onclick="goPage('blocked')" style="width:100%;background:none;border:none;border-bottom:none;">
+                  1 blocked by the risk manager
+                  <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="ov-row2">
+              <div class="card-white ov-hold">
+                <div>
+                  <div class="ov-hold-top">
+                    <div class="ov-hold-sym">SHOP</div>
+                    <span class="tag-pill gain">+8.2%</span>
+                  </div>
+                  <div class="ov-hold-chg">$89.15</div>
+                  <div class="ov-hold-label">Your top position &middot; 20.8% of book</div>
+                </div>
+                <div class="ov-hold-chart">
+                  <svg viewBox="0 0 200 40" preserveAspectRatio="none">
+                    <polyline points="0,32 25,26 50,28 75,18 100,20 125,10 150,13 175,4 200,6" style="fill:none;stroke:var(--gain);stroke-width:2"/>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="ov-hero">
+              <div class="ov-hero-art">
+                <svg viewBox="0 0 400 300" preserveAspectRatio="none">
+                  <defs><linearGradient id="ovg" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" style="stop-color:#E4E2D9"/><stop offset="100%" style="stop-color:#F3F2ED"/>
+                  </linearGradient></defs>
+                  <rect width="400" height="300" fill="url(#ovg)"/>
+                  <polygon points="0,220 50,190 100,205 150,150 200,170 250,110 300,130 350,70 400,90 400,300 0,300" style="fill:rgba(139,63,212,0.18)"/>
+                  <polyline points="0,220 50,190 100,205 150,150 200,170 250,110 300,130 350,70 400,90" style="fill:none;stroke:var(--accent);stroke-width:3"/>
+                </svg>
+              </div>
+              <div class="ov-hero-top">
+                <span class="tag-pill light">AUG 30 2026</span>
+                <span class="tag-pill light">&bull; EARNINGS</span>
+              </div>
+              <div class="ov-hero-cat"><span class="tag-pill light">&bull; EARNINGS</span></div>
+              <div class="ov-hero-body">
+                <div class="ov-hero-headline">Shopify beats estimates. Read the full call.</div>
+              </div>
+              <button class="arrow-circle ov-hero-arrow" onclick="goPage('news')" aria-label="Open news">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg>
+              </button>
+            </div>
+
+          </div>
+
+          <div class="page-head" style="margin-top:22px;">
+            <div class="page-summary">You're holding three positions worth $19,012.50. SHOP's up 8.2%, AAPL's having a great run at +17.1%, and RY has slipped 1.8%.</div>
+            <div class="page-sub">3 OPEN &middot; NO ORDERS REACH THE BROKER IN SIM MODE</div>
+          </div>
+          <div class="pos-list">
+            <div class="pos-row">
+              <div>
+                <div class="pos-sym">SHOP</div>
+                <div class="pos-detail">90 sh @ $82.40 &middot; last $89.15</div>
+                <div class="pos-detail2">Today <b class="up">+$114.30 (+1.3%)</b></div>
+              </div>
+              <div class="pos-r"><div class="pos-value">$8,023.50</div><div class="pos-pnl up">+$607.50 (+8.2%)</div></div>
+            </div>
+            <div class="pos-row">
+              <div>
+                <div class="pos-sym">RY</div>
+                <div class="pos-detail">40 sh @ $134.20 &middot; last $131.85</div>
+                <div class="pos-detail2">Today <b class="down">-$23.60 (-0.4%)</b></div>
+              </div>
+              <div class="pos-r"><div class="pos-value">$5,274.00</div><div class="pos-pnl down">-$94.00 (-1.8%)</div></div>
+            </div>
+            <div class="pos-row">
+              <div>
+                <div class="pos-sym">AAPL</div>
+                <div class="pos-detail">25 sh @ $195.30 &middot; last $228.60</div>
+                <div class="pos-detail2">Today <b class="up">+$57.75 (+1.0%)</b></div>
+              </div>
+              <div class="pos-r"><div class="pos-value">$5,715.00</div><div class="pos-pnl up">+$832.50 (+17.1%)</div></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- MARKET READ -->
+        <section class="page" id="page-market">
+          <div class="page-head">
+            <div class="page-summary">SHOP looks like the strongest buy right now &mdash; it's oversold with a bullish MACD crossover. AAPL's gotten a bit overheated at 74 RSI, so that one's flagged for caution. RY is mostly just drifting.</div>
+            <div class="page-sub">INVESTMENT SCORE, -10 TO +10 &middot; TAP TO EXPAND</div>
+          </div>
+          <div class="m-list">
+
+            <details class="m-card" open>
+              <summary>
+                <div class="m-left"><span class="m-sym">SHOP</span><span class="m-price">$89.15</span></div>
+                <div class="m-right"><span class="m-score buy">+6.2</span><span class="tag-pill gain">BUY</span><span class="chevron">&#9656;</span></div>
+              </summary>
+              <div class="m-body">
+                <div class="m-facts">
+                  <div class="m-fact">RSI(14)<b style="color:var(--gain)">28.4 oversold</b></div>
+                  <div class="m-fact">20d / 50d MA<b>$86.40 &gt; $84.10</b></div>
+                  <div class="m-fact">MACD / signal<b style="color:var(--gain)">0.62 &gt; 0.38 bullish</b></div>
+                  <div class="m-fact">Bollinger band<b>$83.10 &ndash; $92.80 (%B 62)</b></div>
+                  <div class="m-fact">30d volatility<b>2.1% normal</b></div>
+                  <div class="m-fact">14d momentum<b style="color:var(--gain)">+4.8%</b></div>
+                  <div class="m-fact">Support / resistance<b>$86.10 / $94.80</b></div>
+                  <div class="m-fact">Position in range<b>35% (near support)</b></div>
+                  <div class="m-fact">Trend strength<b style="color:var(--gain)">+1.00 strong uptrend</b></div>
+                </div>
+                <div class="m-breakdown">
+                  <div class="m-bd-cell"><span>TECHNICAL</span><b class="pos">+6.0</b></div>
+                  <div class="m-bd-cell"><span>MOMENTUM</span><b class="pos">+3.4</b></div>
+                  <div class="m-bd-cell"><span>VOLATILITY</span><b class="pos">+1.0</b></div>
+                  <div class="m-bd-cell"><span>RISK/RWD</span><b class="pos">+2.0</b></div>
+                </div>
+                <ul class="m-rationale">
+                  <li>Price near support with bullish MACD crossover</li>
+                  <li>Risk/reward 2.3:1 into resistance at $94.80</li>
+                </ul>
+                <div class="m-size">Suggested max position <b>$1,840.00</b> &middot; volatility-adjusted, 2% risk tolerance</div>
+              </div>
+            </details>
+
+            <details class="m-card">
+              <summary>
+                <div class="m-left"><span class="m-sym">RY</span><span class="m-price">$131.85</span></div>
+                <div class="m-right"><span class="m-score hold">+0.8</span><span class="tag-pill hold">HOLD</span><span class="chevron">&#9656;</span></div>
+              </summary>
+              <div class="m-body">
+                <div class="m-facts">
+                  <div class="m-fact">RSI(14)<b>54.0 neutral</b></div>
+                  <div class="m-fact">20d / 50d MA<b>$130.90 &lt; $132.60</b></div>
+                  <div class="m-fact">MACD / signal<b style="color:var(--accent)">-0.15 &lt; -0.05 bearish</b></div>
+                  <div class="m-fact">Bollinger band<b>$128.40 &ndash; $135.20 (%B 51)</b></div>
+                  <div class="m-fact">30d volatility<b>1.4% low</b></div>
+                  <div class="m-fact">14d momentum<b style="color:var(--accent)">-0.6%</b></div>
+                  <div class="m-fact">Support / resistance<b>$129.10 / $134.50</b></div>
+                  <div class="m-fact">Position in range<b>51% (mid-range)</b></div>
+                  <div class="m-fact">Trend strength<b style="color:var(--amber)">-0.33 mixed / consolidating</b></div>
+                </div>
+                <div class="m-breakdown">
+                  <div class="m-bd-cell"><span>TECHNICAL</span><b class="neg">-1.0</b></div>
+                  <div class="m-bd-cell"><span>MOMENTUM</span><b class="pos">+0.6</b></div>
+                  <div class="m-bd-cell"><span>VOLATILITY</span><b class="pos">+1.0</b></div>
+                  <div class="m-bd-cell"><span>RISK/RWD</span><b class="pos">+1.0</b></div>
+                </div>
+                <ul class="m-rationale">
+                  <li>20-day MA just crossed below the 50-day</li>
+                  <li>No confluence yet — trend not confirmed either direction</li>
+                </ul>
+                <div class="m-size">Suggested max position <b>$1,120.00</b> &middot; volatility-adjusted, 2% risk tolerance</div>
+              </div>
+            </details>
+
+            <details class="m-card">
+              <summary>
+                <div class="m-left"><span class="m-sym">AAPL</span><span class="m-price">$228.60</span></div>
+                <div class="m-right"><span class="m-score sell">-2.4</span><span class="tag-pill loss">CAUTION</span><span class="chevron">&#9656;</span></div>
+              </summary>
+              <div class="m-body">
+                <div class="m-facts">
+                  <div class="m-fact">RSI(14)<b style="color:var(--accent)">74.2 overbought</b></div>
+                  <div class="m-fact">20d / 50d MA<b>$219.30 &gt; $208.70</b></div>
+                  <div class="m-fact">MACD / signal<b style="color:var(--gain)">1.85 &gt; 1.40 bullish</b></div>
+                  <div class="m-fact">Bollinger band<b>$210.80 &ndash; $231.40 (%B 86)</b></div>
+                  <div class="m-fact">30d volatility<b>2.8% normal-high</b></div>
+                  <div class="m-fact">14d momentum<b style="color:var(--gain)">+9.2%</b></div>
+                  <div class="m-fact">Support / resistance<b>$214.50 / $231.40</b></div>
+                  <div class="m-fact">Position in range<b>83% (near resistance)</b></div>
+                  <div class="m-fact">Trend strength<b style="color:var(--gain)">+1.00 strong uptrend</b></div>
+                </div>
+                <div class="m-breakdown">
+                  <div class="m-bd-cell"><span>TECHNICAL</span><b class="neg">-3.0</b></div>
+                  <div class="m-bd-cell"><span>MOMENTUM</span><b class="pos">+2.0</b></div>
+                  <div class="m-bd-cell"><span>VOLATILITY</span><b class="neg">-1.5</b></div>
+                  <div class="m-bd-cell"><span>RISK/RWD</span><b class="neg">-2.3</b></div>
+                </div>
+                <ul class="m-rationale">
+                  <li>Momentum fading after extended run above resistance</li>
+                  <li>Position already up 17.1% — risk/reward now unfavorable</li>
+                </ul>
+                <div class="m-size">Suggested max position <b>$980.00</b> &middot; volatility-adjusted, 2% risk tolerance</div>
+              </div>
+            </details>
+
+          </div>
+        </section>
+
+        <!-- NEWS -->
+        <section class="page" id="page-news">
+          <div class="page-head">
+            <div class="page-summary">Six stories came in today, three of them touching your holdings: Shopify beat earnings and popped 3.5%, Royal Bank warned on loan losses and dipped 1.2%, and an Apple supplier flagged a possible shortage.</div>
+            <div class="page-sub">AUTO-FLAGGED AGAINST YOUR OPEN POSITIONS — SHOP, RY, AAPL</div>
+          </div>
+
+          <div class="n-filters">
+            <button class="n-filter active" onclick="filterNews('all', this)">All news</button>
+            <button class="n-filter" onclick="filterNews('holdings', this)">My holdings (3)</button>
+          </div>
+
+          <div class="n-list" id="newsList">
+
+            <div class="n-card favorited" data-held="true">
+              <div class="n-media">
+                <svg viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true">
+                  <defs><linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" style="stop-color:var(--gain);stop-opacity:0.3"/>
+                    <stop offset="100%" style="stop-color:var(--gain);stop-opacity:0"/>
+                  </linearGradient></defs>
+                  <polygon points="0,70 40,58 80,62 120,42 160,48 200,26 240,32 300,8 300,90 0,90" style="fill:url(#g1)"/>
+                  <line x1="0" y1="70" x2="300" y2="70" style="stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3,4;opacity:0.4"/>
+                  <polyline points="0,70 40,58 80,62 120,42 160,48 200,26 240,32 300,8" style="fill:none;stroke:var(--gain);stroke-width:2"/>
+                  <circle cx="300" cy="8" r="3" style="fill:var(--gain)"/>
+                  <text x="8" y="18" style="font-family:var(--font-m);font-size:12px;font-weight:600;fill:var(--gain)">+3.5%</text>
+                  <text x="292" y="82" text-anchor="end" style="font-family:var(--font-m);font-size:9px;letter-spacing:1px;fill:var(--ink-3)">SHOP</text>
+                </svg>
+                <span class="n-star" title="Matches your holdings">&#9733;</span>
+              </div>
+              <div class="n-meta"><span class="n-cat">EARNINGS</span><span class="n-time">14:02</span></div>
+              <div class="n-headline">Shopify smashes Q2 earnings, raises full-year guidance</div>
+              <p class="n-desc">Merchant revenue and subscription growth both beat consensus, and management raised full-year guidance for the second straight quarter.</p>
+              <div class="n-bottom">
+                <div class="n-symbols"><span class="n-chip held">SHOP</span></div>
+                <div class="n-impact up">+3.5%</div>
+              </div>
+              <details class="p-rationale">
+                <summary><span class="chevron">&#9656;</span> WHY THIS MOVES THE PRICE</summary>
+                <p>Earnings beats with guidance raises historically move the stock 2% to 5% same-day; this one lands at the high end given the size of the guidance revision.</p>
+                <div class="m-facts" style="margin:8px 0 0;">
+                  <div class="m-fact">Model confidence<b style="color:var(--gain)">88%</b></div>
+                  <div class="m-fact">Reaction window<b>within hours</b></div>
+                </div>
+              </details>
+              <a class="n-more" href="https://example.com/news/shop-q2-2026-earnings" target="_blank" rel="noopener noreferrer">See more <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+            </div>
+
+            <div class="n-card favorited" data-held="true">
+              <div class="n-media">
+                <svg viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true">
+                  <defs><linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.3"/>
+                    <stop offset="100%" style="stop-color:var(--accent);stop-opacity:0"/>
+                  </linearGradient></defs>
+                  <polygon points="0,20 40,32 80,28 120,45 160,40 200,58 240,52 300,72 300,90 0,90" style="fill:url(#g2)"/>
+                  <line x1="0" y1="20" x2="300" y2="20" style="stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3,4;opacity:0.4"/>
+                  <polyline points="0,20 40,32 80,28 120,45 160,40 200,58 240,52 300,72" style="fill:none;stroke:var(--accent);stroke-width:2"/>
+                  <circle cx="300" cy="72" r="3" style="fill:var(--accent)"/>
+                  <text x="8" y="18" style="font-family:var(--font-m);font-size:12px;font-weight:600;fill:var(--accent)">-1.2%</text>
+                  <text x="292" y="82" text-anchor="end" style="font-family:var(--font-m);font-size:9px;letter-spacing:1px;fill:var(--ink-3)">RY</text>
+                </svg>
+                <span class="n-star" title="Matches your holdings">&#9733;</span>
+              </div>
+              <div class="n-meta"><span class="n-cat">COMPANY NEWS</span><span class="n-time">13:41</span></div>
+              <div class="n-headline">Royal Bank flags higher loan-loss provisions, shares slip</div>
+              <p class="n-desc">Higher provisions for expected loan losses point to softening credit conditions, weighing on shares despite in-line core earnings.</p>
+              <div class="n-bottom">
+                <div class="n-symbols"><span class="n-chip held">RY</span></div>
+                <div class="n-impact down">-1.2%</div>
+              </div>
+              <details class="p-rationale">
+                <summary><span class="chevron">&#9656;</span> WHY THIS MOVES THE PRICE</summary>
+                <p>Provision increases read as a credit-quality concern rather than a one-off; historically a modest same-day drag until the next quarter's numbers clarify the trend.</p>
+                <div class="m-facts" style="margin:8px 0 0;">
+                  <div class="m-fact">Model confidence<b>71%</b></div>
+                  <div class="m-fact">Reaction window<b>same day to next session</b></div>
+                </div>
+              </details>
+              <a class="n-more" href="https://example.com/news/ry-provisions-update" target="_blank" rel="noopener noreferrer">See more <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+            </div>
+
+            <div class="n-card favorited" data-held="true">
+              <div class="n-media">
+                <svg viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true">
+                  <defs><linearGradient id="g3" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" style="stop-color:var(--accent);stop-opacity:0.3"/>
+                    <stop offset="100%" style="stop-color:var(--accent);stop-opacity:0"/>
+                  </linearGradient></defs>
+                  <polygon points="0,25 40,20 80,38 120,34 160,50 200,46 240,64 300,60 300,90 0,90" style="fill:url(#g3)"/>
+                  <line x1="0" y1="25" x2="300" y2="25" style="stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3,4;opacity:0.4"/>
+                  <polyline points="0,25 40,20 80,38 120,34 160,50 200,46 240,64 300,60" style="fill:none;stroke:var(--accent);stroke-width:2"/>
+                  <circle cx="300" cy="60" r="3" style="fill:var(--accent)"/>
+                  <text x="8" y="18" style="font-family:var(--font-m);font-size:12px;font-weight:600;fill:var(--accent)">-1.0%</text>
+                  <text x="292" y="82" text-anchor="end" style="font-family:var(--font-m);font-size:9px;letter-spacing:1px;fill:var(--ink-3)">AAPL</text>
+                </svg>
+                <span class="n-star" title="Matches your holdings">&#9733;</span>
+              </div>
+              <div class="n-meta"><span class="n-cat">COMPANY NEWS</span><span class="n-time">12:55</span></div>
+              <div class="n-headline">Apple supplier warns of component shortage ahead of holiday quarter</div>
+              <p class="n-desc">A key supplier flagged possible component constraints heading into the holiday quarter, raising questions about iPhone availability.</p>
+              <div class="n-bottom">
+                <div class="n-symbols"><span class="n-chip held">AAPL</span></div>
+                <div class="n-impact down">-1.0%</div>
+              </div>
+              <details class="p-rationale">
+                <summary><span class="chevron">&#9656;</span> WHY THIS MOVES THE PRICE</summary>
+                <p>Supply-chain warnings this far ahead of the holiday quarter tend to be a minor drag unless a second supplier confirms the shortage.</p>
+                <div class="m-facts" style="margin:8px 0 0;">
+                  <div class="m-fact">Model confidence<b>64%</b></div>
+                  <div class="m-fact">Reaction window<b>same day to next session</b></div>
+                </div>
+              </details>
+              <a class="n-more" href="https://example.com/news/aapl-supplier-note" target="_blank" rel="noopener noreferrer">See more <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+            </div>
+
+            <div class="n-card" data-held="false">
+              <div class="n-media">
+                <svg viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true">
+                  <defs><linearGradient id="g4" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" style="stop-color:var(--gain);stop-opacity:0.25"/>
+                    <stop offset="100%" style="stop-color:var(--gain);stop-opacity:0"/>
+                  </linearGradient></defs>
+                  <polygon points="0,55 40,50 80,56 120,44 160,46 200,36 240,38 300,24 300,90 0,90" style="fill:url(#g4)"/>
+                  <line x1="0" y1="55" x2="300" y2="55" style="stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3,4;opacity:0.4"/>
+                  <polyline points="0,55 40,50 80,56 120,44 160,46 200,36 240,38 300,24" style="fill:none;stroke:var(--gain);stroke-width:2"/>
+                  <circle cx="300" cy="24" r="3" style="fill:var(--gain)"/>
+                  <text x="8" y="18" style="font-family:var(--font-m);font-size:12px;font-weight:600;fill:var(--gain)">+1.0%</text>
+                  <text x="292" y="82" text-anchor="end" style="font-family:var(--font-m);font-size:9px;letter-spacing:1px;fill:var(--ink-3)">SPY</text>
+                </svg>
+                <span class="n-star">&#9734;</span>
+              </div>
+              <div class="n-meta"><span class="n-cat">FED POLICY</span><span class="n-time">11:20</span></div>
+              <div class="n-headline">Fed holds rates steady, signals two cuts in 2027</div>
+              <p class="n-desc">The central bank left its policy rate unchanged and penciled in two rate cuts for next year, a modestly dovish signal.</p>
+              <div class="n-bottom">
+                <div class="n-symbols"><span class="n-chip">SPY</span></div>
+                <div class="n-impact up">+1.0%</div>
+              </div>
+              <details class="p-rationale">
+                <summary><span class="chevron">&#9656;</span> WHY THIS MOVES THE PRICE</summary>
+                <p>A hold with a dovish signal on future cuts historically reads as mildly positive for broad equities, less so for any single name in the watchlist.</p>
+                <div class="m-facts" style="margin:8px 0 0;">
+                  <div class="m-fact">Model confidence<b style="color:var(--gain)">82%</b></div>
+                  <div class="m-fact">Reaction window<b>immediate to same-day</b></div>
+                </div>
+              </details>
+              <a class="n-more" href="https://example.com/news/fomc-statement" target="_blank" rel="noopener noreferrer">See more <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+            </div>
+
+            <div class="n-card" data-held="false">
+              <div class="n-media">
+                <svg viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true">
+                  <defs><linearGradient id="g5" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" style="stop-color:var(--gain);stop-opacity:0.3"/>
+                    <stop offset="100%" style="stop-color:var(--gain);stop-opacity:0"/>
+                  </linearGradient></defs>
+                  <polygon points="0,64 40,52 80,58 120,38 160,42 200,22 240,28 300,12 300,90 0,90" style="fill:url(#g5)"/>
+                  <line x1="0" y1="64" x2="300" y2="64" style="stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3,4;opacity:0.4"/>
+                  <polyline points="0,64 40,52 80,58 120,38 160,42 200,22 240,28 300,12" style="fill:none;stroke:var(--gain);stroke-width:2"/>
+                  <circle cx="300" cy="12" r="3" style="fill:var(--gain)"/>
+                  <text x="8" y="18" style="font-family:var(--font-m);font-size:12px;font-weight:600;fill:var(--gain)">+1.8%</text>
+                  <text x="292" y="82" text-anchor="end" style="font-family:var(--font-m);font-size:9px;letter-spacing:1px;fill:var(--ink-3)">TSX</text>
+                </svg>
+                <span class="n-star">&#9734;</span>
+              </div>
+              <div class="n-meta"><span class="n-cat">ECONOMIC DATA</span><span class="n-time">09:47</span></div>
+              <div class="n-headline">Canadian CPI cools to 2.1%, below expectations</div>
+              <p class="n-desc">Headline inflation cooled more than economists expected, easing pressure on the central bank to hold rates higher for longer.</p>
+              <div class="n-bottom">
+                <div class="n-symbols"><span class="n-chip">TSX</span></div>
+                <div class="n-impact up">+1.8%</div>
+              </div>
+              <details class="p-rationale">
+                <summary><span class="chevron">&#9656;</span> WHY THIS MOVES THE PRICE</summary>
+                <p>Inflation prints below expectations historically ease rate-cut timing pressure, supportive for the broad market rather than any single held name.</p>
+                <div class="m-facts" style="margin:8px 0 0;">
+                  <div class="m-fact">Model confidence<b style="color:var(--gain)">78%</b></div>
+                  <div class="m-fact">Reaction window<b>within minutes</b></div>
+                </div>
+              </details>
+              <a class="n-more" href="https://example.com/news/canada-cpi-report" target="_blank" rel="noopener noreferrer">See more <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+            </div>
+
+            <div class="n-card" data-held="false">
+              <div class="n-media">
+                <svg viewBox="0 0 300 90" preserveAspectRatio="none" aria-hidden="true">
+                  <defs><linearGradient id="g6" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" style="stop-color:var(--gain);stop-opacity:0.3"/>
+                    <stop offset="100%" style="stop-color:var(--gain);stop-opacity:0"/>
+                  </linearGradient></defs>
+                  <polygon points="0,68 40,60 80,64 120,48 160,50 200,30 240,34 300,10 300,90 0,90" style="fill:url(#g6)"/>
+                  <line x1="0" y1="68" x2="300" y2="68" style="stroke:var(--ink-3);stroke-width:1;stroke-dasharray:3,4;opacity:0.4"/>
+                  <polyline points="0,68 40,60 80,64 120,48 160,50 200,30 240,34 300,10" style="fill:none;stroke:var(--gain);stroke-width:2"/>
+                  <circle cx="300" cy="10" r="3" style="fill:var(--gain)"/>
+                  <text x="8" y="18" style="font-family:var(--font-m);font-size:12px;font-weight:600;fill:var(--gain)">+3.5%</text>
+                  <text x="292" y="82" text-anchor="end" style="font-family:var(--font-m);font-size:9px;letter-spacing:1px;fill:var(--ink-3)">TSLA</text>
+                </svg>
+                <span class="n-star">&#9734;</span>
+              </div>
+              <div class="n-meta"><span class="n-cat">EARNINGS</span><span class="n-time">08:15</span></div>
+              <div class="n-headline">Tesla shares surge after record delivery numbers</div>
+              <p class="n-desc">Deliveries came in above the highest analyst estimates, driven by stronger-than-expected demand in North America.</p>
+              <div class="n-bottom">
+                <div class="n-symbols"><span class="n-chip">TSLA</span></div>
+                <div class="n-impact up">+3.5%</div>
+              </div>
+              <details class="p-rationale">
+                <summary><span class="chevron">&#9656;</span> WHY THIS MOVES THE PRICE</summary>
+                <p>Not currently on your watchlist — shown for broad market context only.</p>
+                <div class="m-facts" style="margin:8px 0 0;">
+                  <div class="m-fact">Model confidence<b style="color:var(--gain)">91%</b></div>
+                  <div class="m-fact">Reaction window<b>within hours</b></div>
+                </div>
+              </details>
+              <a class="n-more" href="https://example.com/news/tsla-deliveries" target="_blank" rel="noopener noreferrer">See more <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- APPROVALS -->
+        <section class="page" id="page-approvals">
+          <div class="page-head">
+            <div class="page-summary">Two trades are waiting on you. Selling 8 shares of AAPL would trim a position that's already up 17.1%, and selling 5 shares of RY would cut exposure to a weakening trend.</div>
+            <div class="page-sub">PASSED THE RISK MANAGER &middot; NOTHING EXECUTES UNTIL YOU DECIDE</div>
+          </div>
+          <div class="p-list" id="proposalsList">
+
+            <div class="p-card sell" data-id="p1">
+              <div class="p-top">
+                <div class="p-action"><span class="p-verb sell">SELL</span><span class="p-qty">8</span><span class="p-sym">AAPL</span><span class="p-order-type">MARKET</span></div>
+                <div class="p-conf">CONFIDENCE <b>66%</b></div>
+              </div>
+              <div class="p-ref">Reference price <b>$228.60</b> &middot; proposed 14:32:05</div>
+              <div class="risk-line ok">&#10003; RISK: PASSED — $1,828.80 / cap $2,000.00, sell within 25 held</div>
+              <details class="p-rationale">
+                <summary><span class="chevron">&#9656;</span> VIEW RATIONALE</summary>
+                <p>RSI overbought above resistance with fading momentum. Taking partial profit on a position already up 17.1%.</p>
+                <div class="p-chart">
+                  <div class="chart-tabs" data-symbol="AAPL">
+                    <button class="chart-tab" data-tf="1D" onclick="setChartRange('AAPL','1D',this)">1D</button>
+                    <button class="chart-tab" data-tf="1W" onclick="setChartRange('AAPL','1W',this)">1W</button>
+                    <button class="chart-tab active" data-tf="1M" onclick="setChartRange('AAPL','1M',this)">1M</button>
+                    <button class="chart-tab" data-tf="3M" onclick="setChartRange('AAPL','3M',this)">3M</button>
+                  </div>
+                  <div class="p-chart-label"><span>AAPL PRICE</span><span>RSI(14)</span></div>
+                  <svg id="chart-AAPL" viewBox="0 0 300 120" preserveAspectRatio="none">
+                    <defs><linearGradient id="pcAAPL" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" style="stop-color:var(--red);stop-opacity:0.28"/>
+                      <stop offset="100%" style="stop-color:var(--red);stop-opacity:0"/>
+                    </linearGradient></defs>
+                    <line id="chart-AAPL-res-line" x1="4" x2="296" style="stroke:var(--red);stroke-width:0.8;stroke-dasharray:2,3;opacity:0.6"/>
+                    <text id="chart-AAPL-res-label" x="296" text-anchor="end" style="font-family:var(--font-m);font-size:6px;fill:var(--red)">R 231.40</text>
+                    <line id="chart-AAPL-sup-line" x1="4" x2="296" style="stroke:var(--gain);stroke-width:0.8;stroke-dasharray:2,3;opacity:0.6"/>
+                    <text id="chart-AAPL-sup-label" x="296" text-anchor="end" style="font-family:var(--font-m);font-size:6px;fill:var(--gain)">S 214.50</text>
+                    <polygon id="chart-AAPL-area" style="fill:url(#pcAAPL)"/>
+                    <polyline id="chart-AAPL-price" style="fill:none;stroke:var(--red);stroke-width:1.3"/>
+                    <circle id="chart-AAPL-dot" r="2.2" style="fill:var(--red)"/>
+                    <text id="chart-AAPL-first-label" x="4" y="80" style="font-family:var(--font-m);font-size:6.5px;fill:var(--ink-2)">$205.00</text>
+                    <text id="chart-AAPL-last-label" x="296" y="80" text-anchor="end" style="font-family:var(--font-m);font-size:6.5px;fill:var(--ink)">$228.60</text>
+                    <line x1="0" y1="86" x2="300" y2="86" style="stroke:var(--line);stroke-width:1"/>
+                    <line x1="4" y1="97.2" x2="296" y2="97.2" style="stroke:var(--red);stroke-width:0.6;stroke-dasharray:2,2;opacity:0.5"/>
+                    <text x="296" y="96" text-anchor="end" style="font-family:var(--font-m);font-size:5.5px;fill:var(--red);opacity:0.8">70</text>
+                    <line x1="4" y1="106.8" x2="296" y2="106.8" style="stroke:var(--gain);stroke-width:0.6;stroke-dasharray:2,2;opacity:0.5"/>
+                    <text x="296" y="112" text-anchor="end" style="font-family:var(--font-m);font-size:5.5px;fill:var(--gain);opacity:0.8">30</text>
+                    <polyline id="chart-AAPL-rsi" style="fill:none;stroke:var(--ink-2);stroke-width:1.1"/>
+                    <text id="chart-AAPL-rsi-label" x="4" y="119" style="font-family:var(--font-m);font-size:6.5px;fill:var(--red)">74.2 overbought</text>
+                  </svg>
+                </div>
+              </details>
+              <div class="p-actions">
+                <button class="btn btn-deny" onclick="resolve('p1','denied')">Deny</button>
+                <button class="btn btn-approve" onclick="resolve('p1','approved')">Approve</button>
+              </div>
+            </div>
+
+            <div class="p-card sell" data-id="p2">
+              <div class="p-top">
+                <div class="p-action"><span class="p-verb sell">SELL</span><span class="p-qty">5</span><span class="p-sym">RY</span><span class="p-order-type">MARKET</span></div>
+                <div class="p-conf">CONFIDENCE <b>58%</b></div>
+              </div>
+              <div class="p-ref">Reference price <b>$131.85</b> &middot; proposed 14:32:06</div>
+              <div class="risk-line ok">&#10003; RISK: PASSED — $659.25 / cap $2,000.00, sell within 40 held</div>
+              <details class="p-rationale">
+                <summary><span class="chevron">&#9656;</span> VIEW RATIONALE</summary>
+                <p>20-day MA crossed below the 50-day. Trimming to reduce exposure to a weakening trend rather than exiting outright.</p>
+                <div class="p-chart">
+                  <div class="chart-tabs" data-symbol="RY">
+                    <button class="chart-tab" data-tf="1D" onclick="setChartRange('RY','1D',this)">1D</button>
+                    <button class="chart-tab" data-tf="1W" onclick="setChartRange('RY','1W',this)">1W</button>
+                    <button class="chart-tab active" data-tf="1M" onclick="setChartRange('RY','1M',this)">1M</button>
+                    <button class="chart-tab" data-tf="3M" onclick="setChartRange('RY','3M',this)">3M</button>
+                  </div>
+                  <div class="p-chart-label"><span>RY PRICE</span><span>RSI(14)</span></div>
+                  <svg id="chart-RY" viewBox="0 0 300 120" preserveAspectRatio="none">
+                    <defs><linearGradient id="pcRY" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" style="stop-color:var(--amber);stop-opacity:0.28"/>
+                      <stop offset="100%" style="stop-color:var(--amber);stop-opacity:0"/>
+                    </linearGradient></defs>
+                    <line id="chart-RY-res-line" x1="4" x2="296" style="stroke:var(--red);stroke-width:0.8;stroke-dasharray:2,3;opacity:0.6"/>
+                    <text id="chart-RY-res-label" x="296" text-anchor="end" style="font-family:var(--font-m);font-size:6px;fill:var(--red)">R 134.50</text>
+                    <line id="chart-RY-sup-line" x1="4" x2="296" style="stroke:var(--gain);stroke-width:0.8;stroke-dasharray:2,3;opacity:0.6"/>
+                    <text id="chart-RY-sup-label" x="296" text-anchor="end" style="font-family:var(--font-m);font-size:6px;fill:var(--gain)">S 129.10</text>
+                    <polygon id="chart-RY-area" style="fill:url(#pcRY)"/>
+                    <polyline id="chart-RY-price" style="fill:none;stroke:var(--amber);stroke-width:1.3"/>
+                    <circle id="chart-RY-dot" r="2.2" style="fill:var(--amber)"/>
+                    <text id="chart-RY-first-label" x="4" y="80" style="font-family:var(--font-m);font-size:6.5px;fill:var(--ink-2)">$135.00</text>
+                    <text id="chart-RY-last-label" x="296" y="80" text-anchor="end" style="font-family:var(--font-m);font-size:6.5px;fill:var(--ink)">$131.85</text>
+                    <line x1="0" y1="86" x2="300" y2="86" style="stroke:var(--line);stroke-width:1"/>
+                    <line x1="4" y1="97.2" x2="296" y2="97.2" style="stroke:var(--red);stroke-width:0.6;stroke-dasharray:2,2;opacity:0.5"/>
+                    <text x="296" y="96" text-anchor="end" style="font-family:var(--font-m);font-size:5.5px;fill:var(--red);opacity:0.8">70</text>
+                    <line x1="4" y1="106.8" x2="296" y2="106.8" style="stroke:var(--gain);stroke-width:0.6;stroke-dasharray:2,2;opacity:0.5"/>
+                    <text x="296" y="112" text-anchor="end" style="font-family:var(--font-m);font-size:5.5px;fill:var(--gain);opacity:0.8">30</text>
+                    <polyline id="chart-RY-rsi" style="fill:none;stroke:var(--ink-2);stroke-width:1.1"/>
+                    <text id="chart-RY-rsi-label" x="4" y="119" style="font-family:var(--font-m);font-size:6.5px;fill:var(--ink-2)">54.0 neutral</text>
+                  </svg>
+                </div>
+              </details>
+              <div class="p-actions">
+                <button class="btn btn-deny" onclick="resolve('p2','denied')">Deny</button>
+                <button class="btn btn-approve" onclick="resolve('p2','approved')">Approve</button>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- BLOCKED -->
+        <section class="page" id="page-blocked">
+          <div class="page-head">
+            <div class="page-summary">The system wanted to buy 15 more shares of SHOP on a strong oversold signal, but that would've pushed the position to $9,360.75 &mdash; well past your $5,000 cap, so it got blocked.</div>
+            <div class="page-sub">REJECTED AUTOMATICALLY &middot; NEVER REACHED YOUR QUEUE</div>
+          </div>
+          <div class="p-list">
+            <div class="p-card blocked">
+              <div class="p-top">
+                <div class="p-action"><span class="p-verb blocked">BUY</span><span class="p-qty">15</span><span class="p-sym">SHOP</span><span class="p-order-type">MARKET</span></div>
+                <div class="p-conf">CONFIDENCE <b>71%</b></div>
+              </div>
+              <div class="p-ref">Reference price <b>$89.15</b> &middot; proposed 14:32:07</div>
+              <div class="risk-line no">&#10005; RISK: BLOCKED — position value $9,360.75 exceeds cap $5,000.00</div>
+              <details class="p-rationale">
+                <summary><span class="chevron">&#9656;</span> VIEW RATIONALE</summary>
+                <p>RSI oversold with bullish MACD crossover was strong enough for the model to propose adding to the position. The hard position-size cap stopped it, independent of confidence.</p>
+                <div class="p-chart">
+                  <div class="chart-tabs" data-symbol="SHOP">
+                    <button class="chart-tab" data-tf="1D" onclick="setChartRange('SHOP','1D',this)">1D</button>
+                    <button class="chart-tab" data-tf="1W" onclick="setChartRange('SHOP','1W',this)">1W</button>
+                    <button class="chart-tab active" data-tf="1M" onclick="setChartRange('SHOP','1M',this)">1M</button>
+                    <button class="chart-tab" data-tf="3M" onclick="setChartRange('SHOP','3M',this)">3M</button>
+                  </div>
+                  <div class="p-chart-label"><span>SHOP PRICE</span><span>RSI(14)</span></div>
+                  <svg id="chart-SHOP" viewBox="0 0 300 120" preserveAspectRatio="none">
+                    <defs><linearGradient id="pcSHOP" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" style="stop-color:var(--gain);stop-opacity:0.28"/>
+                      <stop offset="100%" style="stop-color:var(--gain);stop-opacity:0"/>
+                    </linearGradient></defs>
+                    <line id="chart-SHOP-res-line" x1="4" x2="296" style="stroke:var(--red);stroke-width:0.8;stroke-dasharray:2,3;opacity:0.6"/>
+                    <text id="chart-SHOP-res-label" x="296" text-anchor="end" style="font-family:var(--font-m);font-size:6px;fill:var(--red)">R 94.80</text>
+                    <line id="chart-SHOP-sup-line" x1="4" x2="296" style="stroke:var(--gain);stroke-width:0.8;stroke-dasharray:2,3;opacity:0.6"/>
+                    <text id="chart-SHOP-sup-label" x="296" text-anchor="end" style="font-family:var(--font-m);font-size:6px;fill:var(--gain)">S 86.10</text>
+                    <polygon id="chart-SHOP-area" style="fill:url(#pcSHOP)"/>
+                    <polyline id="chart-SHOP-price" style="fill:none;stroke:var(--gain);stroke-width:1.3"/>
+                    <circle id="chart-SHOP-dot" r="2.2" style="fill:var(--gain)"/>
+                    <text id="chart-SHOP-first-label" x="4" y="80" style="font-family:var(--font-m);font-size:6.5px;fill:var(--ink-2)">$96.00</text>
+                    <text id="chart-SHOP-last-label" x="296" y="80" text-anchor="end" style="font-family:var(--font-m);font-size:6.5px;fill:var(--ink)">$89.15</text>
+                    <line x1="0" y1="86" x2="300" y2="86" style="stroke:var(--line);stroke-width:1"/>
+                    <line x1="4" y1="97.2" x2="296" y2="97.2" style="stroke:var(--red);stroke-width:0.6;stroke-dasharray:2,2;opacity:0.5"/>
+                    <text x="296" y="96" text-anchor="end" style="font-family:var(--font-m);font-size:5.5px;fill:var(--red);opacity:0.8">70</text>
+                    <line x1="4" y1="106.8" x2="296" y2="106.8" style="stroke:var(--gain);stroke-width:0.6;stroke-dasharray:2,2;opacity:0.5"/>
+                    <text x="296" y="112" text-anchor="end" style="font-family:var(--font-m);font-size:5.5px;fill:var(--gain);opacity:0.8">30</text>
+                    <polyline id="chart-SHOP-rsi" style="fill:none;stroke:var(--ink-2);stroke-width:1.1"/>
+                    <text id="chart-SHOP-rsi-label" x="4" y="119" style="font-family:var(--font-m);font-size:6.5px;fill:var(--gain)">28.4 oversold</text>
+                  </svg>
+                </div>
+              </details>
+            </div>
+          </div>
+        </section>
+
+        <!-- PERFORMANCE -->
+        <section class="page" id="page-performance">
+          <div class="page-head">
+            <div class="page-summary">You've won 2 of your last 3 trades for a 66.7% win rate, netting +$414.50 overall.</div>
+            <div class="page-sub">TRAILING 30 DAYS</div>
+          </div>
+          <div class="perf-row">
+            <div class="perf-cell"><span>WIN RATE</span><b>66.7%</b></div>
+            <div class="perf-cell"><span>TOTAL P&amp;L</span><b>+$414.50</b></div>
+            <div class="perf-cell"><span>AVG P&amp;L</span><b>+$138.17</b></div>
+          </div>
+          <div class="j-list">
+            <div class="j-row">
+              <div class="j-left"><span class="j-check win">&#10003;</span><div><div class="j-sym">SHOP &middot; BUY</div><div class="j-meta">25 sh &middot; conf 82% &middot; $78.50 &rarr; $84.20</div></div></div>
+              <div class="j-pnl up">+$142.50 (+7.3%)</div>
+            </div>
+            <div class="j-row">
+              <div class="j-left"><span class="j-check loss">&#10005;</span><div><div class="j-sym">RY &middot; SELL</div><div class="j-meta">8 sh &middot; conf 61% &middot; $134.90 &rarr; $139.65</div></div></div>
+              <div class="j-pnl down">-$38.00 (-3.5%)</div>
+            </div>
+            <div class="j-row">
+              <div class="j-left"><span class="j-check win">&#10003;</span><div><div class="j-sym">AAPL &middot; BUY</div><div class="j-meta">20 sh &middot; conf 75% &middot; $203.10 &rarr; $218.60</div></div></div>
+              <div class="j-pnl up">+$310.00 (+7.6%)</div>
+            </div>
+          </div>
+        </section>
+
+        <!-- LOG -->
+        <section class="page" id="page-settings">
+          <div class="page-head">
+            <div class="page-summary">Everything that controls how the agent behaves &mdash; execution rules, risk limits, and where its data comes from.</div>
+            <div class="page-sub">CHANGES APPLY TO THIS SESSION</div>
+          </div>
+
+          <div class="set-list">
+
+            <div class="card-white set-card">
+              <div class="set-card-title">Execution</div>
+              <label class="switch">
+                <input type="checkbox" id="setLiveMode" onchange="toggleLiveWarning(this)">
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span class="switch-label">Live trading <span class="switch-sub">Off = simulated orders only</span></span>
+              </label>
+              <div class="set-warning" id="liveWarning">Live mode places real orders through Interactive Brokers. Every trade still requires your approval.</div>
+              <div class="set-field">
+                <label for="setAutoApprove">Auto-approve below</label>
+                <input type="text" id="setAutoApprove" value="$0.00" inputmode="decimal">
+                <div class="set-hint">Orders under this size skip manual approval. $0.00 requires approval on everything.</div>
+              </div>
+            </div>
+
+            <div class="card-white set-card">
+              <div class="set-card-title">Risk limits</div>
+              <label class="switch">
+                <input type="checkbox" id="setAutoRisk" checked onchange="toggleAutoRisk(this)">
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span class="switch-label">Automated <span class="switch-sub">Derived from your account, from Overview</span></span>
+              </label>
+
+              <div class="set-category">
+                <div class="set-cat-label">Position sizing</div>
+                <div class="set-field">
+                  <label for="setMaxPosition">Max position size</label>
+                  <input type="text" id="setMaxPosition" value="$5,000.00" inputmode="decimal" disabled>
+                  <div class="set-hint" id="hintMaxPosition">~13% of net liquidation ($38,500.00)</div>
+                </div>
+              </div>
+
+              <div class="set-category">
+                <div class="set-cat-label">Exposure</div>
+                <div class="set-field">
+                  <label for="setMaxExposure">Max portfolio exposure</label>
+                  <input type="text" id="setMaxExposure" value="60%" inputmode="decimal" disabled>
+                  <div class="set-hint" id="hintMaxExposure">Buffer above your current 49.4%</div>
+                </div>
+              </div>
+
+              <div class="set-category">
+                <div class="set-cat-label">Per-trade risk</div>
+                <div class="set-field">
+                  <label for="setMaxOrderRisk">Max risk per order</label>
+                  <input type="text" id="setMaxOrderRisk" value="2%" inputmode="decimal" disabled>
+                  <div class="set-hint" id="hintMaxOrderRisk">Standard 2% risk-of-capital rule</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-white set-card">
+              <div class="set-card-title">Notifications</div>
+              <label class="switch">
+                <input type="checkbox" checked>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span class="switch-label">Approval alerts</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox" checked>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span class="switch-label">Blocked order alerts</span>
+              </label>
+              <label class="switch">
+                <input type="checkbox">
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span class="switch-label">Daily performance summary</span>
+              </label>
+            </div>
+
+            <div class="card-white set-card">
+              <div class="set-card-title">Data &amp; broker</div>
+              <div class="set-info-row"><span class="set-dot"></span>Interactive Brokers <span class="set-info-r">connected</span></div>
+              <div class="set-info-row"><span class="set-dot"></span>Alpha Vantage <span class="set-info-r">connected</span></div>
+              <div class="set-info-row"><span class="set-dot"></span>Bigdata.com <span class="set-info-r">connected</span></div>
+            </div>
+
+            <div class="card-white set-card">
+              <div class="set-card-title">Account</div>
+              <div class="set-info-row"><span class="sb-avatar" style="width:20px;height:20px;font-size:10px;">M</span>Signed in as <b id="settingsPageUser" style="color:var(--ink);margin-left:3px;">Mura</b></div>
+              <button class="set-link-btn" onclick="openSettings()">Session settings &amp; theme <span>&#8594;</span></button>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </div>
+
+    <div class="bottom-caps">
+      <div>STAYS<br>HUMAN</div>
+      <div class="r">BY<br>DESIGN</div>
+    </div>
+  </div>
+
+<script>
+  function pad(n){ return n.toString().padStart(2,'0'); }
+  function nowStamp(){
+    const d = new Date();
+    return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  }
+
+  // ---------- live data fetching from dashboard API ----------
+  const API_BASE = 'http://127.0.0.1:8000';
+  let dashboardData = null;
+
+  async function fetchDashboardState() {
+    try {
+      const res = await fetch(`${API_BASE}/api/state`);
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      dashboardData = await res.json();
+      updateDashboard();
+    } catch (err) {
+      console.error('Failed to fetch dashboard state:', err);
+      document.getElementById('apiStatus').textContent = '✗ Offline';
+      document.getElementById('apiStatus').style.color = 'var(--red)';
+    }
+  }
+
+  function updateDashboard() {
+    if (!dashboardData) return;
+    const data = dashboardData;
+
+    // Update account balances on Overview page
+    const nlVal = document.getElementById('netLiqValue');
+    const cbVal = document.getElementById('cashBalValue');
+    if (nlVal && data.account.net_liquidation) {
+      nlVal.textContent = '$' + data.account.net_liquidation.toLocaleString('en-US', {maximumFractionDigits: 2});
+    }
+    if (cbVal && data.account.cash_balance) {
+      cbVal.textContent = '$' + data.account.cash_balance.toLocaleString('en-US', {maximumFractionDigits: 2});
+    }
+
+    // Update positions
+    if (data.positions) {
+      Object.entries(data.positions).forEach(([sym, pos]) => {
+        const priceEl = document.getElementById(`posPrice_${sym}`);
+        const qtyEl = document.getElementById(`posQty_${sym}`);
+        const valueEl = document.getElementById(`posValue_${sym}`);
+        if (priceEl) priceEl.textContent = '$' + pos.market_price.toFixed(2);
+        if (qtyEl) qtyEl.textContent = pos.quantity.toFixed(0);
+        if (valueEl) valueEl.textContent = '$' + pos.market_value.toLocaleString('en-US', {maximumFractionDigits: 2});
+      });
+    }
+
+    // Update API status
+    document.getElementById('apiStatus').textContent = '✓ Connected';
+    document.getElementById('apiStatus').style.color = 'var(--gain)';
+  }
+
+  // Fetch on page load and every 10 seconds
+  fetchDashboardState();
+  setInterval(fetchDashboardState, 10000);
+
+  let uiScale = 100;
+  const sidebar = document.getElementById('sidebar');
+  const sbBackdrop = document.getElementById('sbBackdrop');
+  function toggleSidebar(){
+    const expanded = sidebar.classList.toggle('expanded');
+    sbBackdrop.classList.toggle('open', expanded);
+  }
+  function collapseSidebar(){
+    sidebar.classList.remove('expanded');
+    sbBackdrop.classList.remove('open');
+  }
+
+  // ---------- draggable expand tab + border edge ----------
+  const sbToggle = document.getElementById('sbToggle');
+  const sbEdge = document.getElementById('sbEdge');
+  const sbToggleTip = document.getElementById('sbToggleTip');
+  const SB_MIN = 62, SB_MAX = 214, SB_THRESHOLD = 138;
+  let sbDragging = false, sbDragMoved = false, sbDragStartX = 0, sbSuppressClick = false;
+
+  function startSbDrag(e){
+    sbDragging = true; sbDragMoved = false; sbDragStartX = e.clientX;
+    sidebar.style.transition = 'none';
+    try{ e.currentTarget.setPointerCapture(e.pointerId); }catch(err){}
+    sbToggleTip.classList.add('show');
+    sbToggleTip.textContent = sidebar.classList.contains('expanded') ? 'Collapse' : 'Expand';
+  }
+
+  function moveSbDrag(e){
+    if(!sbDragging) return;
+    const dx = e.clientX - sbDragStartX;
+    if(Math.abs(dx) > 4) sbDragMoved = true;
+    if(!sbDragMoved) return;
+    const w = Math.max(SB_MIN, Math.min(SB_MAX, SB_MIN + dx));
+    sidebar.style.width = w + 'px';
+    const willExpand = w > SB_THRESHOLD;
+    sidebar.classList.toggle('expanded', willExpand);
+    sbBackdrop.classList.toggle('open', willExpand);
+    sbToggleTip.textContent = willExpand ? 'Release to expand' : 'Release to collapse';
+  }
+
+  function endSbDrag(){
+    if(!sbDragging) return;
+    sbDragging = false;
+    sidebar.style.transition = '';
+    sidebar.style.width = '';
+    sbToggleTip.classList.remove('show');
+    if(sbDragMoved){
+      sbSuppressClick = true;
+      sbBackdrop.classList.toggle('open', sidebar.classList.contains('expanded'));
+    }
+  }
+
+  [sbToggle, sbEdge].forEach(function(handle){
+    handle.addEventListener('pointerdown', startSbDrag);
+    handle.addEventListener('pointermove', moveSbDrag);
+    handle.addEventListener('pointerup', endSbDrag);
+    handle.addEventListener('pointercancel', endSbDrag);
+    handle.addEventListener('click', function(){
+      if(sbSuppressClick){ sbSuppressClick = false; return; }
+      toggleSidebar();
+    });
+  });
+
+  const pageLabels = {
+    overview: 'Overview', market: 'Market read', news: 'News',
+    approvals: 'Approvals', blocked: 'Blocked', performance: 'Performance', settings: 'Settings'
+  };
+
+  function setPage(target){
+    document.querySelectorAll('.sb-item').forEach(function(b){
+      b.classList.toggle('active', b.dataset.page === target);
+    });
+    document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+    document.getElementById('page-' + target).classList.add('active');
+    document.getElementById('pageEyebrow').textContent = pageLabels[target] || '';
+    collapseSidebar();
+  }
+  function goPage(target){ setPage(target); window.scrollTo({top:0, behavior:'smooth'}); }
+
+  document.querySelectorAll('.sb-item').forEach(function(btn){
+    btn.addEventListener('click', function(){ setPage(btn.dataset.page); });
+  });
+
+  function filterNews(mode, btn){
+    document.querySelectorAll('.n-filter').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    document.querySelectorAll('.n-card').forEach(function(card){
+      const show = mode === 'all' || card.dataset.held === 'true';
+      card.style.display = show ? '' : 'none';
+    });
+  }
+
+  // ---------- rationale chart engine ----------
+  const CHART_DATA = {"AAPL": {"1D": {"prices": [224.0, 219.47, 226.03, 230.52, 224.68, 225.05, 226.09, 230.02, 232.79, 228.6], "rsi": [68, 69.0, 69.6, 71.1, 74.6, 67.7, 70.4, 75.4, 70.1, 74.2]}, "1W": {"prices": [218.0, 216.41, 222.21, 226.63, 224.15, 225.83, 228.6], "rsi": [62, 64.3, 66.3, 69.1, 74.0, 68.4, 74.2]}, "1M": {"prices": [205.0, 203.72, 207.99, 211.22, 209.28, 210.46, 211.96, 214.92, 217.29, 215.44, 218.25, 221.45, 222.36, 220.41, 219.45, 224.11, 225.7, 225.35, 225.81, 228.6], "rsi": [55, 56.3, 57.3, 59.0, 62.9, 56.3, 59.3, 64.7, 59.7, 65.4, 66.7, 63.8, 68.5, 65.1, 72.0, 70.2, 74.7, 69.2, 69.5, 74.2]}, "3M": {"prices": [190.0, 188.37, 195.99, 201.88, 199.15, 201.61, 204.62, 210.05, 214.5, 211.93, 217.12, 222.96, 224.98, 222.22, 221.13, 228.6], "rsi": [48, 50.0, 51.7, 54.3, 58.8, 53.0, 56.7, 62.8, 58.6, 65.1, 67.0, 64.9, 70.4, 67.7, 75.3, 74.2]}},
+    "RY": {"1D": {"prices": [132.4, 132.52, 132.41, 132.24, 132.46, 132.08, 131.74, 132.31, 131.68, 131.85], "rsi": [51, 49.3, 51.9, 52.6, 53.9, 51.8, 49.0, 55.1, 51.6, 54.0]}, "1W": {"prices": [133.6, 133.56, 133.2, 132.76, 132.85, 132.12, 131.85], "rsi": [56, 53.7, 55.6, 55.6, 56.3, 53.5, 54.0]}, "1M": {"prices": [134.9, 134.99, 134.76, 134.45, 134.68, 134.08, 133.52, 134.24, 133.29, 133.73, 133.6, 132.54, 133.22, 133.48, 132.94, 132.11, 132.03, 132.15, 131.62, 131.85], "rsi": [52, 50.1, 52.4, 53.0, 54.0, 51.7, 48.6, 54.5, 50.8, 53.8, 50.5, 50.8, 55.5, 56.3, 53.7, 52.6, 55.5, 57.6, 57.9, 54.0]}, "3M": {"prices": [138.2, 138.29, 137.71, 137.0, 137.35, 136.04, 134.83, 136.17, 134.17, 134.93, 134.57, 132.36, 133.61, 134.04, 132.85, 131.85], "rsi": [58, 55.7, 57.7, 57.8, 58.5, 55.8, 52.4, 57.9, 53.8, 56.5, 52.8, 52.7, 57.0, 57.4, 54.5, 54.0]}},
+    "SHOP": {"1D": {"prices": [86.0, 85.24, 87.17, 86.2, 87.31, 88.16, 88.8, 88.34, 88.8, 89.15], "rsi": [20, 21.6, 23.3, 22.7, 23.6, 23.4, 28.3, 24.6, 24.3, 28.4]}, "1W": {"prices": [82.0, 81.53, 85.09, 84.29, 86.63, 88.58, 89.15], "rsi": [16, 18.7, 21.6, 22.1, 24.2, 25.1, 28.4]}, "1M": {"prices": [96.0, 93.79, 96.06, 93.49, 94.41, 94.88, 95.01, 93.29, 93.11, 90.83, 92.12, 91.52, 93.08, 91.5, 91.97, 90.33, 88.94, 91.27, 90.79, 89.15], "rsi": [22, 23.0, 24.1, 22.9, 23.2, 22.4, 26.7, 22.5, 21.5, 22.4, 25.8, 28.7, 26.3, 22.7, 24.7, 23.8, 25.9, 26.4, 31.3, 28.4]}, "3M": {"prices": [74.0, 72.24, 77.2, 74.89, 77.82, 80.08, 81.82, 80.79, 82.07, 80.2, 83.69, 84.34, 88.23, 87.41, 89.67, 89.15], "rsi": [45, 44.6, 44.2, 41.6, 40.5, 38.2, 41.0, 35.3, 32.9, 32.4, 34.4, 35.8, 32.0, 26.9, 27.5, 28.4]}}};
+
+  const CHART_META = {
+    AAPL: {support:214.50, resistance:231.40},
+    RY: {support:129.10, resistance:134.50},
+    SHOP: {support:86.10, resistance:94.80}
+  };
+
+  function renderChart(sym, tf){
+    const d = CHART_DATA[sym][tf];
+    const meta = CHART_META[sym];
+    const prices = d.prices, rsi = d.rsi, n = prices.length;
+    const x0=4, x1=296, yTop=8, yBot=72;
+    let mn = Math.min.apply(null, prices.concat([meta.support]));
+    let mx = Math.max.apply(null, prices.concat([meta.resistance]));
+    const pad = (mx-mn)*0.05; mn -= pad; mx += pad;
+    const xAt = i => x0 + (x1-x0)*i/(n-1);
+    const yAt = p => yBot - (p-mn)/(mx-mn)*(yBot-yTop);
+
+    const pricePts = prices.map((p,i) => xAt(i).toFixed(1)+','+yAt(p).toFixed(1)).join(' ');
+    document.getElementById('chart-'+sym+'-price').setAttribute('points', pricePts);
+    document.getElementById('chart-'+sym+'-area').setAttribute('points', '4,72 '+pricePts+' 296,72');
+
+    const lastX = xAt(n-1), lastY = yAt(prices[n-1]);
+    document.getElementById('chart-'+sym+'-dot').setAttribute('cx', lastX);
+    document.getElementById('chart-'+sym+'-dot').setAttribute('cy', lastY);
+
+    const supY = yAt(meta.support), resY = yAt(meta.resistance);
+    ['sup','res'].forEach(function(k){
+      const y = k === 'sup' ? supY : resY;
+      const line = document.getElementById('chart-'+sym+'-'+k+'-line');
+      line.setAttribute('y1', y); line.setAttribute('y2', y);
+      document.getElementById('chart-'+sym+'-'+k+'-label').setAttribute('y', y - 1.5);
+    });
+
+    document.getElementById('chart-'+sym+'-first-label').textContent = '$'+prices[0].toFixed(2);
+    document.getElementById('chart-'+sym+'-last-label').textContent = '$'+prices[n-1].toFixed(2);
+
+    const rTop=90, rBot=114;
+    const rsiPts = rsi.map((r,i) => xAt(i).toFixed(1)+','+(rBot-(r/100)*(rBot-rTop)).toFixed(1)).join(' ');
+    document.getElementById('chart-'+sym+'-rsi').setAttribute('points', rsiPts);
+    const lastRsi = rsi[n-1];
+    const rsiTag = lastRsi >= 70 ? ' overbought' : lastRsi <= 30 ? ' oversold' : ' neutral';
+    document.getElementById('chart-'+sym+'-rsi-label').textContent = lastRsi.toFixed(1) + rsiTag;
+  }
+
+  function setChartRange(sym, tf, btn){
+    document.querySelectorAll('.chart-tabs[data-symbol="'+sym+'"] .chart-tab').forEach(function(b){
+      b.classList.toggle('active', b === btn);
+    });
+    renderChart(sym, tf);
+  }
+
+  ['AAPL','RY','SHOP'].forEach(function(s){ renderChart(s, '1M'); });
+
+  function resolve(id, decision){
+    const card = document.querySelector('.p-card[data-id="' + id + '"]');
+    if(!card || card.classList.contains('resolved')) return;
+
+    const actionsEl = card.querySelector('.p-actions');
+    const ts = nowStamp();
+    const label = decision === 'approved' ? 'Approved' : 'Denied';
+    const symbol = decision === 'approved' ? '&#10003;' : '&#10005;';
+
+    actionsEl.outerHTML = '<div class="p-resolved ' + decision + '"><span>' + symbol + '</span><span>' + label + ' at ' + ts + '</span></div>';
+    card.classList.add('resolved');
+
+    const badge = document.getElementById('badgeApprovalsS');
+    if(badge){
+      const next = Math.max(0, parseInt(badge.textContent, 10) - 1);
+      badge.textContent = next;
+      if(next === 0){
+        badge.style.display = 'none';
+        const dot = document.getElementById('dotApprovals');
+        if(dot) dot.style.display = 'none';
+      }
+    }
+
+  }
+
+  function toggleLiveWarning(input){
+    document.getElementById('liveWarning').classList.toggle('show', input.checked);
+  }
+
+  const AUTO_RISK_DEFAULTS = {
+    setMaxPosition: '$5,000.00',
+    setMaxExposure: '60%',
+    setMaxOrderRisk: '2%'
+  };
+  function toggleAutoRisk(input){
+    const auto = input.checked;
+    Object.keys(AUTO_RISK_DEFAULTS).forEach(function(id){
+      const field = document.getElementById(id);
+      field.disabled = auto;
+      if(auto) field.value = AUTO_RISK_DEFAULTS[id];
+    });
+  }
+
+  function toggleFullscreen(){
+    document.body.classList.toggle('fullscreen');
+    sidebar.classList.remove('expanded');
+    sbBackdrop.classList.remove('open');
+  }
+
+  function openSettings(){
+    document.getElementById('settingsBackdrop').classList.add('open');
+  }
+
+  function closeSettings(){
+    document.getElementById('settingsBackdrop').classList.remove('open');
+  }
+
+  const THEMES = ['violet','crimson','cyan','amber','emerald'];
+
+  function setTheme(name){
+    document.body.dataset.theme = name === 'violet' ? '' : name;
+    document.querySelectorAll('.theme-swatch').forEach(function(sw){
+      sw.classList.toggle('active', sw.id === 'theme-' + name);
+    });
+    try{ localStorage.setItem('ta-theme', name); }catch(err){}
+  }
+
+  function cycleTheme(){
+    const current = document.body.dataset.theme || 'violet';
+    const next = THEMES[(THEMES.indexOf(current) + 1) % THEMES.length];
+    setTheme(next);
+  }
+
+  (function loadSavedPrefs(){
+    try{
+      const savedTheme = localStorage.getItem('ta-theme');
+      if(savedTheme && THEMES.includes(savedTheme)) setTheme(savedTheme);
+      const savedName = localStorage.getItem('ta-username');
+      if(savedName){
+        document.getElementById('userNameInput').value = savedName;
+        document.getElementById('sbUserLabel').textContent = savedName;
+        document.getElementById('topbarUserLabel').textContent = savedName;
+        document.getElementById('sbAvatar').textContent = savedName.charAt(0).toUpperCase();
+        const settingsPageUser = document.getElementById('settingsPageUser');
+        if(settingsPageUser) settingsPageUser.textContent = savedName;
+      }
+      const savedScale = localStorage.getItem('ta-scale');
+      if(savedScale){
+        uiScale = parseInt(savedScale, 10);
+        applyScale();
+      }
+    }catch(err){}
+  })();
+
+  function saveSettings(){
+    const userName = document.getElementById('userNameInput').value.trim() || 'Mura';
+    document.getElementById('sbUserLabel').textContent = userName;
+    document.getElementById('topbarUserLabel').textContent = userName;
+    document.getElementById('sbAvatar').textContent = userName.charAt(0).toUpperCase();
+    const settingsPageUser = document.getElementById('settingsPageUser');
+    if(settingsPageUser) settingsPageUser.textContent = userName;
+    try{ localStorage.setItem('ta-username', userName); }catch(err){}
+    closeSettings();
+  }
+
+  function openScale(){ document.getElementById('scaleBackdrop').classList.add('open'); }
+  function closeScale(){ document.getElementById('scaleBackdrop').classList.remove('open'); }
+  function applyScale(){
+    document.documentElement.style.zoom = (uiScale / 100);
+    document.getElementById('scaleReadout').textContent = uiScale + '%';
+    document.getElementById('scaleSlider').value = uiScale;
+    try{ localStorage.setItem('ta-scale', uiScale); }catch(err){}
+  }
+  function adjustScale(delta){
+    uiScale = Math.max(80, Math.min(130, uiScale + delta));
+    applyScale();
+  }
+  function setScale(val){
+    uiScale = val;
+    applyScale();
+  }
+  function setScaleFromSlider(val){
+    uiScale = parseInt(val, 10);
+    applyScale();
+  }
+</script>
+  <div class="modal-backdrop" id="settingsBackdrop" onclick="closeSettings()"></div>
+  <div class="modal-panel" id="settingsModal">
+    <span class="modal-corner tl"></span>
+    <span class="modal-corner tr"></span>
+    <span class="modal-corner bl"></span>
+    <span class="modal-corner br"></span>
+    <div class="modal-head">
+      <h3><span class="modal-rec"></span>SESSION_SETTINGS</h3>
+      <button class="modal-close" onclick="closeSettings()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="setting-row">
+        <label>User Name</label>
+        <input type="text" id="userNameInput" value="Mura" />
+      </div>
+      <div class="setting-row">
+        <label>Theme</label>
+        <div class="theme-row">
+          <button class="theme-swatch active" id="theme-violet" style="--sw:#8B3FD4" onclick="setTheme('violet')" aria-label="Violet theme"></button>
+          <button class="theme-swatch" id="theme-crimson" style="--sw:#E23B3B" onclick="setTheme('crimson')" aria-label="Crimson theme"></button>
+          <button class="theme-swatch" id="theme-cyan" style="--sw:#2FB6D9" onclick="setTheme('cyan')" aria-label="Cyan theme"></button>
+          <button class="theme-swatch" id="theme-amber" style="--sw:#E3A012" onclick="setTheme('amber')" aria-label="Amber theme"></button>
+          <button class="theme-swatch" id="theme-emerald" style="--sw:#1FA97A" onclick="setTheme('emerald')" aria-label="Emerald theme"></button>
+          <button class="theme-cycle" onclick="cycleTheme()" aria-label="Cycle theme">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 0114-5.3M20 12a8 8 0 01-14 5.3M18 4v4h-4M6 20v-4h4"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="modal-save" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="scaleBackdrop" onclick="closeScale()"></div>
+  <div class="modal-panel" id="scaleModal">
+    <span class="modal-corner tl"></span>
+    <span class="modal-corner tr"></span>
+    <span class="modal-corner bl"></span>
+    <span class="modal-corner br"></span>
+    <div class="modal-head">
+      <h3><span class="modal-rec"></span>DISPLAY_SCALE</h3>
+      <button class="modal-close" onclick="closeScale()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="scale-readout" id="scaleReadout">100%</div>
+      <div class="scale-controls">
+        <button class="scale-btn" onclick="adjustScale(-5)" aria-label="Decrease">−</button>
+        <input type="range" id="scaleSlider" min="80" max="130" step="5" value="100" oninput="setScaleFromSlider(this.value)">
+        <button class="scale-btn" onclick="adjustScale(5)" aria-label="Increase">+</button>
+      </div>
+      <div class="scale-presets">
+        <button onclick="setScale(85)">Compact</button>
+        <button onclick="setScale(100)">Standard</button>
+        <button onclick="setScale(115)">Large</button>
+      </div>
+    </div>
+  </div>
+
+
+</body>
+</html>
